@@ -1,0 +1,16 @@
+{
+  "name": "Mina Ayman Seif - Portfolio",
+  "short_name": "Mina Ayman",
+  "description": "Interactive 3D Portfolio of Mina Ayman Seif",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#8B5CF6",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -39,6 +39,42 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLORS.bg);
 scene.fog = new THREE.Fog(COLORS.bg, 30, 100);
 
+// ============================================
+// SKY SPHERE
+// ============================================
+const skyGeo = new THREE.SphereGeometry(200, 32, 32);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: {
+topColor:    { value: new THREE.Color(0x6A4A9A) },  // بنفسجي أوضح
+bottomColor: { value: new THREE.Color(0x1A1530) },  // أسود بنفسجي
+    offset:      { value: 20 },
+    exponent:    { value: 0.7 },
+  },
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 topColor;
+    uniform vec3 bottomColor;
+    uniform float offset;
+    uniform float exponent;
+    varying vec3 vWorldPosition;
+    void main() {
+      float h = normalize(vWorldPosition + offset).y;
+      gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+    }
+  `,
+});
+const sky = new THREE.Mesh(skyGeo, skyMat);
+scene.add(sky);
+
+
 const camera = new THREE.PerspectiveCamera(
   60,
   window.innerWidth / window.innerHeight,
@@ -58,12 +94,13 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 // ============================================
 // LIGHTS
 // ============================================
-scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
-const hemi = new THREE.HemisphereLight(COLORS.purple, COLORS.bg, 0.6);
+
+const hemi = new THREE.HemisphereLight(COLORS.purple, COLORS.bg, 0.8);  // ← كان 0.6
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+const sun = new THREE.DirectionalLight(0xffffff, 1.8);  // ← كان 1.2
 sun.position.set(15, 25, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -171,6 +208,278 @@ function createDoor({ id, label, color, pos }) {
 }
 
 doorDefs.forEach(d => doors.push(createDoor(d)));
+
+// ============================================
+// ROOM DECORATIONS (تفاصيل كل غرفة)
+// ============================================
+function createAboutRoom() {
+  const group = new THREE.Group();
+  group.position.set(-15, 0, -15); // نفس مكان باب ABOUT
+
+  // مكتب
+  const desk = new THREE.Mesh(
+    new THREE.BoxGeometry(4, 0.2, 2),
+    new THREE.MeshStandardMaterial({ color: 0x2A2A3A, roughness: 0.7 })
+  );
+  desk.position.set(-6, 1, 0);
+  desk.castShadow = true;
+  desk.receiveShadow = true;
+  group.add(desk);
+
+  // أرجل المكتب (4 أرجل)
+  const legGeo = new THREE.BoxGeometry(0.15, 1, 0.15);
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x1A1A25 });
+  [[-1.8, 0.9], [1.8, 0.9], [-1.8, -0.9], [1.8, -0.9]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(legGeo, legMat);
+    leg.position.set(-6 + x, 0.5, z);
+    group.add(leg);
+  });
+
+  // كوب على المكتب
+  const cup = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.15, 0.4, 12),
+    new THREE.MeshStandardMaterial({ color: 0x8B5CF6, emissive: 0x8B5CF6, emissiveIntensity: 0.3 })
+  );
+  cup.position.set(-6, 1.3, 0.3);
+  cup.castShadow = true;
+  group.add(cup);
+
+  // كتب متكدسة
+  const bookColors = [0x3B82F6, 0x06B6D4, 0xEC4899];
+  for (let i = 0; i < 3; i++) {
+    const book = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.12, 0.6),
+      new THREE.MeshStandardMaterial({
+        color: bookColors[i],
+        emissive: bookColors[i],
+        emissiveIntensity: 0.15,
+      })
+    );
+    book.position.set(-5, 1.15 + i * 0.12, -0.6);
+    book.castShadow = true;
+    group.add(book);
+  }
+
+  // كرسي
+  const chairSeat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.15, 0.7),
+    new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+  );
+  chairSeat.position.set(-6, 0.9, 1.8);
+  chairSeat.castShadow = true;
+  group.add(chairSeat);
+
+  const chairBack = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 1, 0.15),
+    new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+  );
+  chairBack.position.set(-6, 1.4, 2.1);
+  chairBack.castShadow = true;
+  group.add(chairBack);
+
+  scene.add(group);
+}
+
+function createProjectsRoom() {
+  const group = new THREE.Group();
+  group.position.set(15, 0, -15); // نفس مكان باب PROJECTS
+
+  // 3 شاشات جدارية
+  for (let i = 0; i < 3; i++) {
+    const screenFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(2.5, 1.6, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+    );
+    screenFrame.position.set(-3 + i * 3, 3.5, 0);
+    screenFrame.castShadow = true;
+    group.add(screenFrame);
+
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.3, 1.4),
+      new THREE.MeshStandardMaterial({
+        color: 0x06B6D4,
+        emissive: 0x06B6D4,
+        emissiveIntensity: 0.7,
+      })
+    );
+    screen.position.set(-3 + i * 3, 3.5, 0.1);
+    group.add(screen);
+
+    // إضاءة خلف الشاشة
+    const backLight = new THREE.PointLight(0x06B6D4, 1.5, 6);
+    backLight.position.set(-3 + i * 3, 3.5, 1);
+    group.add(backLight);
+  }
+
+  // طاولة طويلة
+  const table = new THREE.Mesh(
+    new THREE.BoxGeometry(8, 0.2, 1.5),
+    new THREE.MeshStandardMaterial({ color: 0x2A2A3A })
+  );
+  table.position.set(0, 1, 3);
+  table.castShadow = true;
+  table.receiveShadow = true;
+  group.add(table);
+
+  // أرجل الطاولة
+  [[-3.8, 3], [3.8, 3]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(
+      new THREE.BoxGeometry(0.2, 1, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+    );
+    leg.position.set(x, 0.5, z);
+    group.add(leg);
+  });
+
+  scene.add(group);
+}
+
+function createSkillsRoom() {
+  const group = new THREE.Group();
+  // نحطها على الجنب — مش على الباب مباشرة
+  // الأبواب على (-15, 0, 15)
+  // نخلي التفاصيل على (-10, 0, 12) — قدام الباب بشوي وجنبه
+  group.position.set(-10, 0, 12);
+
+  // ============================================
+  // اللوحة الخلفية (خلف الأعمدة)
+  // ============================================
+  const board = new THREE.Mesh(
+    new THREE.BoxGeometry(5, 2.5, 0.2),
+    new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+  );
+  board.position.set(0, 2.2, -0.6);
+  board.castShadow = true;
+  group.add(board);
+
+  // شاشة اللوحة
+  const boardScreen = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.7, 2.2),
+    new THREE.MeshStandardMaterial({
+      color: 0x8B5CF6,
+      emissive: 0x8B5CF6,
+      emissiveIntensity: 0.35,
+      transparent: true,
+      opacity: 0.75,
+    })
+  );
+  boardScreen.position.set(0, 2.2, -0.48);
+  group.add(boardScreen);
+
+  // ============================================
+  // الأعمدة (أقصر — بحد أقصى 3 وحدات)
+  // ============================================
+  const barColors = [0x8B5CF6, 0x3B82F6, 0x06B6D4, 0x8B5CF6, 0x3B82F6];
+  const barHeights = [1.2, 1.8, 2.6, 1.5, 2.2];  // ← أقصر بكتير
+  const barSpacing = 0.8;
+
+  barHeights.forEach((h, i) => {
+    const barX = (i - 2) * barSpacing;
+
+    // العمود
+    const bar = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, h, 0.6),
+      new THREE.MeshStandardMaterial({
+        color: barColors[i],
+        emissive: barColors[i],
+        emissiveIntensity: 0.5,
+      })
+    );
+    bar.position.set(barX, h / 2, 0);
+    bar.castShadow = true;
+    group.add(bar);
+
+    // القمة المضيئة
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.08, 0.7),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: barColors[i],
+        emissiveIntensity: 1.5,
+      })
+    );
+    cap.position.set(barX, h + 0.04, 0);
+    group.add(cap);
+  });
+
+  // ============================================
+  // القاعدة
+  // ============================================
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(5, 0.15, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0x2A2A3A })
+  );
+  base.position.set(0, 0.05, 0);
+  base.receiveShadow = true;
+  base.castShadow = true;
+  group.add(base);
+
+  scene.add(group);
+}
+
+function createContactRoom() {
+  const group = new THREE.Group();
+  group.position.set(15, 0, 15); // نفس مكان باب CONTACT
+
+  // صندوق بريد
+  const mailboxPost = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8),
+    new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+  );
+  mailboxPost.position.set(-3, 0.75, 0);
+  mailboxPost.castShadow = true;
+  group.add(mailboxPost);
+
+  const mailbox = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.6, 1.2),
+    new THREE.MeshStandardMaterial({
+      color: 0xEC4899,
+      emissive: 0xEC4899,
+      emissiveIntensity: 0.3,
+    })
+  );
+  mailbox.position.set(-3, 1.9, 0);
+  mailbox.castShadow = true;
+  group.add(mailbox);
+
+  // أريكة صغيرة
+  const sofaSeat = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 0.5, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0x2A2A3A })
+  );
+  sofaSeat.position.set(2, 0.5, 0);
+  sofaSeat.castShadow = true;
+  group.add(sofaSeat);
+
+  const sofaBack = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 0.8, 0.3),
+    new THREE.MeshStandardMaterial({ color: 0x2A2A3A })
+  );
+  sofaBack.position.set(2, 0.9, -0.45);
+  sofaBack.castShadow = true;
+  group.add(sofaBack);
+
+  scene.add(group);
+}
+
+// ===== إنشاء الغرف الأربعة =====
+createAboutRoom();
+createProjectsRoom();
+createSkillsRoom();
+createContactRoom();
+
+// إضاءة نقطية في كل غرفة
+[
+  { pos: [-15, 4, -15], color: COLORS.purple },
+  { pos: [ 15, 4, -15], color: COLORS.blue   },
+  { pos: [-15, 4,  15], color: COLORS.cyan   },
+  { pos: [ 15, 4,  15], color: COLORS.pink   },
+].forEach(({ pos, color }) => {
+  const light = new THREE.PointLight(color, 3, 15);
+  light.position.set(...pos);
+  scene.add(light);
+});
+
 
 // ============================================
 // DECORATIONS
