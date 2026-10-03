@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
-
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 // ============================================
 // CONFIG
 // ============================================
@@ -617,7 +617,6 @@ function playAction(name, fade = 0.25) {
 // INPUT
 // ============================================
 const keys = {};
-const mouse = { isDown: false };
 let cameraAngle = 0;
 let cameraPitch = 0.15;
 
@@ -631,20 +630,48 @@ window.addEventListener("keyup", (e) => {
   keys[e.code] = false;
 });
 
-// لو الصفحة فقدت الفوكس، نصفّر الأزرار عشان الشخصية ما تفضلش ماشية
 window.addEventListener("blur", () => {
   for (const k in keys) keys[k] = false;
-  mouse.isDown = false;
 });
 
-canvas.addEventListener("mousedown", () => { mouse.isDown = true; });
-window.addEventListener("mouseup",   () => { mouse.isDown = false; });
-window.addEventListener("mousemove", (e) => {
-  if (!mouse.isDown) return;
-  cameraAngle -= e.movementX * 0.005;
-  cameraPitch += e.movementY * 0.003;
-  cameraPitch = clamp(cameraPitch, -0.3, 1.2);
+// ============================================
+// POINTER LOCK
+// ============================================
+const clickToStart = document.getElementById("clickToStart");
+const roomPanelEl = document.getElementById("roomPanel");
+
+let pointerLocked = false;
+
+document.body.addEventListener("click", (e) => {
+  if (e.target.closest("#exitBtn")) return;
+  if (e.target.closest("#roomPanel")) return;
+  if (pointerLocked) return;
+  if (!roomPanelEl.classList.contains("hidden")) return;
+
+  document.body.requestPointerLock();
 });
+
+document.addEventListener("pointerlockchange", () => {
+  pointerLocked = document.pointerLockElement === document.body;
+
+  if (pointerLocked) {
+    document.body.classList.add("playing");
+    clickToStart.classList.add("hidden");
+  } else {
+    document.body.classList.remove("playing");
+    if (roomPanelEl.classList.contains("hidden")) {
+      clickToStart.classList.remove("hidden");
+    }
+  }
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!pointerLocked) return;
+  cameraAngle -= e.movementX * 0.0025;
+  cameraPitch += e.movementY * 0.002;
+  cameraPitch = clamp(cameraPitch, -0.4, 1.0);
+});
+
 
 // ============================================
 // INTERACTION
@@ -896,21 +923,40 @@ window.addEventListener("resize", () => {
 // ============================================
 const hud = document.getElementById("hud");
 const loading = document.getElementById("loading");
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
+
+function setProgress(value) {
+  progressFill.style.width = value + "%";
+  progressText.textContent = Math.floor(value) + "%";
+}
 
 async function init() {
   try {
+    setProgress(0);
+
+    setProgress(10);
     await loadCharacter();
+    setProgress(50);
+
+    setProgress(60);
     await loadAnimations();
+    setProgress(90);
 
     playAction("idle");
+    setProgress(100);
+
+    await new Promise(r => setTimeout(r, 400));
 
     loading.classList.add("fade-out");
     setTimeout(() => loading.remove(), 600);
+
     hud.classList.remove("hidden");
+    clickToStart.classList.remove("hidden");
 
     animate();
 
-    console.log("🌍 World ready with character");
+    console.log("🌍 World ready — click to start");
   } catch (err) {
     console.error("Failed to load character:", err);
     loading.querySelector(".loading-text").textContent = "⚠️ Failed to load character";

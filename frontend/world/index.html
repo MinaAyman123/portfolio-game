@@ -4,13 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My World | Mina Ayman</title>
+    <title>My World | Mina Ayman Seif</title>
+
     <meta name="description" content="Explore my interactive 3D world — Walk around and discover my projects.">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <meta name="theme-color" content="#0A0A0F">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap"
         rel="stylesheet">
-    <meta name="theme-color" content="#0A0A0F">
 
     <link rel="stylesheet" href="style.css">
 </head>
@@ -24,6 +27,10 @@
     <div id="loading" class="loading">
         <div class="loader-ring"></div>
         <p class="loading-text">Building the world...</p>
+        <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <p id="progressText" class="progress-text">0%</p>
     </div>
 
     <!-- HUD -->
@@ -33,7 +40,8 @@
             <div class="hud-hint">
                 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move ·
                 <kbd>Mouse</kbd> Look ·
-                <kbd>Shift</kbd> Run
+                <kbd>Shift</kbd> Run ·
+                <kbd>E</kbd> Interact
             </div>
         </div>
 
@@ -45,6 +53,14 @@
             <p id="interactHint" class="interact-hint hidden">
                 Press <kbd>E</kbd> to enter
             </p>
+        </div>
+    </div>
+
+    <!-- Click to start -->
+    <div id="clickToStart" class="click-to-start hidden">
+        <div class="click-to-start-content">
+            <h2>Click to Start</h2>
+            <p><kbd>WASD</kbd> Move · <kbd>Mouse</kbd> Look · <kbd>ESC</kbd> Release</p>
         </div>
     </div>
 
