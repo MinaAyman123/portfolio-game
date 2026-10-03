@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My World | Mina Ayman</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Canvas -->
+    <canvas id="world-canvas"></canvas>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+        <div class="loader-ring"></div>
+        <p class="loading-text">Building the world...</p>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="hud hidden">
+        <div class="hud-top-left">
+            <button id="exitBtn" class="hud-btn">✕ EXIT</button>
+            <div class="hud-hint">
+                <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move ·
+                <kbd>Mouse</kbd> Look ·
+                <kbd>Shift</kbd> Run
+            </div>
+        </div>
+
+        <div class="hud-center">
+            <div class="crosshair"></div>
+        </div>
+
+        <div class="hud-bottom">
+            <p id="interactHint" class="interact-hint hidden">
+                Press <kbd>E</kbd> to enter
+            </p>
+        </div>
+    </div>
+
+    <!-- Room Info Panel -->
+    <div id="roomPanel" class="room-panel hidden">
+        <div class="room-panel-content">
+            <button id="closePanel" class="close-panel">✕</button>
+            <h2 id="roomTitle"></h2>
+            <div id="roomBody"></div>
+        </div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>

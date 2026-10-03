@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About | Mina Ayman</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/about.css">
+</head>
+
+<body class="about-page">
+
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-logo">MINA</a>
+        <div class="nav-links">
+            <a href="#about">About</a>
+            <a href="#skills">Skills</a>
+            <a href="#projects">Projects</a>
+            <a href="#contact">Contact</a>
+        </div>
+    </nav>
+
+    <!-- ===== HERO ===== -->
+    <section class="about-hero">
+        <canvas id="particles"></canvas>
+        <div class="hero-content">
+            <div class="badge">◆ AI ENGINEER</div>
+            <h1 class="hero-name">MINA AYMAN SEIF</h1>
+            <p class="hero-role">Machine Learning · Computer Vision · Backend</p>
+            <p class="hero-bio">
+                AI Engineer passionate about building intelligent systems that solve real-world problems.
+                Specialized in Deep Learning, Computer Vision, and scalable Backend APIs.
+            </p>
+
+            <div class="hero-socials">
+                <a href="https://github.com/MinaAyman123" target="_blank" rel="noopener">GitHub</a>
+                <a href="https://www.linkedin.com/in/mina-aiman-0629a42b1/" target="_blank" rel="noopener">LinkedIn</a>
+                <a href="cv.pdf" download="Mina_Ayman_CV.pdf">Download CV</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== SKILLS ===== -->
+    <section id="skills" class="section">
+        <h2 class="section-title">Skills</h2>
+        <div id="skillsGrid" class="skills-grid">
+            <div class="loading-state">Loading skills...</div>
+        </div>
+    </section>
+
+    <!-- ===== PROJECTS ===== -->
+    <section id="projects" class="section">
+        <h2 class="section-title">Projects</h2>
+        <div id="projectsGrid" class="projects-grid">
+            <div class="loading-state">Loading projects...</div>
+        </div>
+    </section>
+
+    <!-- ===== CONTACT ===== -->
+    <section id="contact" class="section">
+        <h2 class="section-title">Get In Touch</h2>
+        <form id="contactForm" class="contact-form">
+            <input type="text" name="name" placeholder="Your Name" required>
+            <input type="email" name="email" placeholder="Your Email" required>
+            <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+            <button type="submit" class="submit-btn">Send Message</button>
+            <p id="formStatus" class="form-status"></p>
+        </form>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <p>© 2026 Mina Ayman Seif — Built with ❤️</p>
+    </footer>
+
+    <script src="js/about.js"></script>
+</body>
+
+</html>
