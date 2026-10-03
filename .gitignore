@@ -36,3 +36,7 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Secrets (مهم جدًا)
+*.token
+secrets.txt
