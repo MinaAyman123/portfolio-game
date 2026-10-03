@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio | AI Engineer</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;600&display=swap"
+    rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <main class="landing">
+    <canvas id="particles"></canvas>
+
+    <div class="content">
+      <div class="badge">◆ AI ENGINEER</div>
+
+      <h1 class="name">MINA AYMAN</h1>
+
+      <p class="subtitle">
+        ML · Computer Vision · Backend
+      </p>
+
+      <button id="enterBtn" class="enter-btn">
+        <span>ENTER MY WORLD</span>
+        <span class="btn-icon">▶</span>
+      </button>
+
+      <!-- Social Links -->
+      <div class="socials">
+        <a href="https://github.com/MinaAyman123" target="_blank" rel="noopener">
+          GitHub
+        </a>
+        <a href="https://www.linkedin.com/in/mina-aiman-0629a42b1/" target="_blank" rel="noopener">
+          LinkedIn
+        </a>
+        <a href="cv.pdf" download="Mina_Ayman_CV.pdf">
+          Download CV
+        </a>
+      </div>
+    </div>
+  </main>
+
+
+  <!-- ===== LOADING SCREEN ===== -->
+  <div id="loading" class="loading hidden">
+    <div class="loader-ring"></div>
+    <p class="loading-text">Initializing world...</p>
+
+    <div class="progress-bar">
+      <div id="progressFill" class="progress-fill"></div>
+    </div>
+
+    <p id="progressText" class="progress-text">0%</p>
+  </div>
+
+  <!-- ===== UNITY CONTAINER (هنستخدمه بعدين) ===== -->
+  <div id="unityWrapper" class="unity-wrapper hidden">
+    <canvas id="unity-canvas"></canvas>
+    <button id="exitBtn" class="hud-btn">✕ EXIT</button>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+
+</html>

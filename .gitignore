@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+venv*/
+.venv/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+
+# Unity
+unity-project/Library/
+unity-project/Temp/
+unity-project/Obj/
+unity-project/Build/
+unity-project/Builds/
+unity-project/Logs/
+unity-project/UserSettings/
+unity-project/*.csproj
+unity-project/*.sln
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Vercel
+.vercel

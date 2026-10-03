@@ -1,0 +1,369 @@
+/* ============ RESET ============ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ============ COLORS ============ */
+:root {
+  --purple: #8B5CF6;
+  --blue:   #3B82F6;
+  --cyan:   #06B6D4;
+  --bg-0:   #0A0A0F;
+  --text:   #F5F5F7;
+  --muted:  #8B8B9E;
+}
+
+/* ============ BASE ============ */
+html, body {
+  height: 100%;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+/* ============ LANDING ============ */
+.landing {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+
+  background:
+    radial-gradient(circle at 30% 20%, #8B5CF615 0%, transparent 55%),
+    radial-gradient(circle at 70% 80%, #3B82F615 0%, transparent 55%),
+    var(--bg-0);
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 6px 18px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+  border-radius: 20px;
+  background: #06B6D410;
+  box-shadow: 0 0 20px #06B6D430;
+}
+
+/* Name */
+.name {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: clamp(2.5rem, 9vw, 5.5rem);
+  letter-spacing: 6px;
+  line-height: 1;
+
+  /* Gradient text */
+  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #06B6D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  filter: drop-shadow(0 0 30px #8B5CF650);
+}
+
+/* Subtitle */
+.subtitle {
+  color: var(--muted);
+  font-size: clamp(0.8rem, 2vw, 1rem);
+  letter-spacing: 2px;
+}
+
+/* Button */
+.enter-btn {
+  margin-top: 30px;
+  padding: 18px 50px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--text);
+
+  background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+
+  box-shadow: 0 0 30px #8B5CF650, inset 0 0 20px #ffffff10;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.enter-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 50px #8B5CF690, inset 0 0 30px #ffffff20;
+}
+
+/* ============ MOBILE ============ */
+@media (max-width: 600px) {
+  .name { letter-spacing: 3px; }
+  .enter-btn {
+    padding: 14px 35px;
+    font-size: 0.8rem;
+  }
+}
+
+/* ============ PARTICLES CANVAS ============ */
+#particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* المحتوى يبقى فوق الـcanvas */
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: fadeUp 0.8s ease-out;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ضبط حجم الاسم عشان سطرين */
+.name {
+  font-size: clamp(2rem, 7vw, 4.5rem);
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* ============ SOCIAL LINKS ============ */
+.socials {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.socials a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  padding: 8px 16px;
+  border: 1px solid #8B8B9E30;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.socials a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+
+.socials a:hover {
+  color: var(--text);
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px #8B5CF650;
+}
+
+.socials a:hover::after {
+  opacity: 1;
+}
+
+/* ============ BUTTON ANIMATION ============ */
+.enter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* نبض خفيف */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 30px #8B5CF650, inset 0 0 20px #ffffff10;
+  }
+  50% {
+    box-shadow: 0 0 50px #8B5CF690, inset 0 0 30px #ffffff20;
+  }
+}
+
+.enter-btn {
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+.enter-btn:hover {
+  animation: none;
+}
+
+/* الأيقونة تتحرك */
+.btn-icon {
+  display: inline-block;
+  transition: transform 0.3s;
+}
+
+.enter-btn:hover .btn-icon {
+  transform: translateX(6px);
+}
+
+
+/* ============================================ */
+/*              LOADING SCREEN                  */
+/* ============================================ */
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg-0);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+
+  /* خلفية + إضاءة خفيفة */
+  background:
+    radial-gradient(circle at 50% 50%, #8B5CF615 0%, transparent 60%),
+    var(--bg-0);
+
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* الدائرة اللي بتلف */
+.loader-ring {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid #8B5CF625;
+  border-top-color: #8B5CF6;
+  border-right-color: #3B82F6;
+  animation: spin 1s linear infinite;
+  box-shadow:
+    0 0 30px #8B5CF640,
+    inset 0 0 20px #8B5CF620;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* النص */
+.loading-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  animation: pulseText 1.8s ease-in-out infinite;
+}
+
+@keyframes pulseText {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* Progress Bar */
+.progress-bar {
+  width: 300px;
+  max-width: 75vw;
+  height: 4px;
+  background: #1A1A25;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 0 10px #00000080;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #8B5CF6, #3B82F6, #06B6D4);
+  border-radius: 4px;
+  box-shadow: 0 0 15px #8B5CF6;
+  transition: width 0.3s ease;
+}
+
+/* النسبة المئوية */
+.progress-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 3px;
+  color: var(--cyan);
+}
+
+/* ============================================ */
+/*              UNITY WRAPPER                   */
+/* ============================================ */
+.unity-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+}
+
+#unity-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hud-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 10px 18px;
+  background: #12121Acc;
+  color: var(--text);
+  border: 1px solid #8B5CF660;
+  border-radius: 6px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+  z-index: 10;
+}
+
+.hud-btn:hover {
+  background: #8B5CF6;
+  border-color: #8B5CF6;
+}
+
+/* ============================================ */
+/*              HELPERS                         */
+/* ============================================ */
+.hidden {
+  display: none !important;
+}
+
+.landing.hide {
+  opacity: 0;
+  transform: scale(1.05);
+  pointer-events: none;
+  transition: opacity 0.6s, transform 0.6s;
+}
+
