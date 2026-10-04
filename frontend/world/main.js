@@ -210,6 +210,398 @@ function createDoor({ id, label, color, pos }) {
 doorDefs.forEach(d => doors.push(createDoor(d)));
 
 // ============================================
+// CENTRAL PATH (الممر المركزي)
+// ============================================
+const centralPath = {
+  neonLines: [],
+  floorSegments: [],
+  pillars: [],
+};
+
+function createCentralPath() {
+  const group = new THREE.Group();
+
+  // ============================================
+  // 1) أرضية الممر (مرتفعة شوي — زي منصة)
+  // ============================================
+  const pathLength = 24;
+  const pathWidth = 7;    // ← وسّعناها شوي
+
+  // الأرضية الأساسية — من اللاعب (z=14) للـAI Core (z=-2)
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x0A0A0F,
+    roughness: 0.4,
+    metalness: 0.6,
+    emissive: 0x1A1A2A,
+    emissiveIntensity: 0.3,
+  });
+
+  // نعمل 8 قطع عشان نضيف كل واحدة على حدة
+  const segments = 8;
+  const segLength = pathLength / segments;
+  for (let i = 0; i < segments; i++) {
+    const seg = new THREE.Mesh(
+      new THREE.BoxGeometry(pathWidth, 0.3, segLength - 0.2),  // ← أسمك
+      floorMat
+    );
+    seg.position.set(0, 0.15, 14 - i * segLength);  // ← مرفوع
+    seg.receiveShadow = true;
+    group.add(seg);
+    centralPath.floorSegments.push(seg);
+  }
+
+  // ============================================
+  // 2) خطوط نيون على الجانبين (بنفسجي + سماوي)
+  // ============================================
+  const neonLeftMat = new THREE.MeshBasicMaterial({
+    color: 0x8B5CF6,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const neonRightMat = new THREE.MeshBasicMaterial({
+    color: 0x06B6D4,
+    transparent: true,
+    opacity: 0.9,
+  });
+
+  // خطوط يسار
+  const leftLine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.1, pathLength),  // ← أعرض وأسمك
+    neonLeftMat
+  );
+  leftLine.position.set(-pathWidth / 2 + 0.4, 0.32, 14 - pathLength / 2);  // ← مرفوع
+  group.add(leftLine);
+  centralPath.neonLines.push({ mesh: leftLine, baseColor: 0x8B5CF6 });
+
+  // خطوط يمين
+  const rightLine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.1, pathLength),  // ← أعرض وأسمك
+    neonRightMat
+  );
+  rightLine.position.set(pathWidth / 2 - 0.4, 0.32, 14 - pathLength / 2);  // ← مرفوع
+  group.add(rightLine);
+  centralPath.neonLines.push({ mesh: rightLine, baseColor: 0x06B6D4 });
+
+  // ============================================
+  // 3) خطوط عرضية (بتتحرك زي كهرباء)
+  // ============================================
+  for (let i = 0; i < 6; i++) {
+    const line = new THREE.Mesh(
+      new THREE.BoxGeometry(pathWidth - 1, 0.05, 0.12),
+      new THREE.MeshBasicMaterial({
+        color: 0x06B6D4,
+        transparent: true,
+        opacity: 0.6,
+      })
+    );
+    line.position.set(0, 0.33, 14 - (i + 1) * (pathLength / 7));  // ← مرفوع
+    line.userData = {
+      baseZ: line.position.z,
+      offset: i * 0.7,
+    };
+    group.add(line);
+    centralPath.neonLines.push({ mesh: line, baseColor: 0x06B6D4, isHorizontal: true });
+  }
+
+  // ============================================
+  // 4) أعمدة صغيرة على الجانبين
+  // ============================================
+  const pillarCount = 6;
+  for (let i = 0; i < pillarCount; i++) {
+    const z = 14 - (i + 0.5) * (pathLength / pillarCount);
+
+    // عمود يسار
+    const leftPillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.25, 1.8, 12),  // ← أسمك وأطول
+      new THREE.MeshStandardMaterial({
+        color: 0x1A1A25,
+        metalness: 0.7,
+        roughness: 0.4,
+        emissive: 0x8B5CF6,
+        emissiveIntensity: 0.3,
+      })
+    );
+    leftPillar.position.set(-pathWidth / 2 - 0.5, 0.9, z);  // ← مرفوع
+    leftPillar.castShadow = true;
+    group.add(leftPillar);
+    centralPath.pillars.push(leftPillar);
+
+    // عمود يمين
+    const rightPillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.25, 1.8, 12),
+      new THREE.MeshStandardMaterial({
+        color: 0x1A1A25,
+        metalness: 0.7,
+        roughness: 0.4,
+        emissive: 0x06B6D4,
+        emissiveIntensity: 0.3,
+      })
+    );
+    rightPillar.position.set(pathWidth / 2 + 0.5, 0.9, z);
+    rightPillar.castShadow = true;
+    group.add(rightPillar);
+    centralPath.pillars.push(rightPillar);
+
+    // كرة مضيئة فوق كل عمود
+    const orbColor = i % 2 === 0 ? 0x8B5CF6 : 0x06B6D4;
+    const topOrb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.28, 16, 16),
+      new THREE.MeshBasicMaterial({ color: orbColor })
+    );
+    topOrb.position.set(-pathWidth / 2 - 0.5, 2.05, z);
+    group.add(topOrb);
+
+    const topOrb2 = topOrb.clone();
+    topOrb2.position.x = pathWidth / 2 + 0.5;
+        topOrb2.position.y = 2.05;  // ← إضافة
+    group.add(topOrb2);
+  }
+
+  // ============================================
+  // 5) إضاءة جانبية (خطوط نيون فعلية)
+  // ============================================
+  for (let i = 0; i < 4; i++) {
+    const z = 14 - (i + 0.5) * (pathLength / 4);
+
+    const leftLight = new THREE.PointLight(0x8B5CF6, 2.5, 8);  // ← أقوى
+    leftLight.position.set(-pathWidth / 2 - 0.5, 1.8, z);  // ← مرفوع
+    group.add(leftLight);
+
+    const rightLight = new THREE.PointLight(0x06B6D4, 2.5, 8);  // ← أقوى
+    rightLight.position.set(pathWidth / 2 + 0.5, 1.8, z);  // ← مرفوع
+    group.add(rightLight);
+  }
+
+  // ============================================
+  // 6) أشعة نور نازلة على الممر (اختياري)
+  // ============================================
+  for (let i = 0; i < 3; i++) {
+    const z = 12 - i * 6;
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.8, 0.8, 8, 12, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x06B6D4,
+        transparent: true,
+        opacity: 0.06,
+        side: THREE.DoubleSide,
+      })
+    );
+    beam.position.set(0, 4, z);
+    group.add(beam);
+  }
+
+  scene.add(group);
+}
+
+createCentralPath();
+
+
+// ============================================
+// AI CORE (قلب النواة)
+// ============================================
+const aiCore = {
+  group: null,
+  crystal: null,
+  ring1: null,
+  ring2: null,
+  beam: null,
+  satellites: [],
+  light: null,
+};
+
+function createAICore() {
+  const group = new THREE.Group();
+  // موضع البلورة — في نص العالم بس مرتفع شوي عن الأرض
+  group.position.set(0, 4, 0);
+
+  // ============================================
+  // 1) البلورة الأساسية (Core Crystal)
+  // ============================================
+  const crystalGeo = new THREE.IcosahedronGeometry(1.5, 2);
+  const crystalMat = new THREE.MeshStandardMaterial({
+    color: 0x8B5CF6,
+    emissive: 0x8B5CF6,
+    emissiveIntensity: 2,
+    roughness: 0.2,
+    metalness: 0.8,
+    flatShading: true,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+  crystal.castShadow = true;
+  group.add(crystal);
+
+  // ============================================
+  // 2) هالة داخلية (Glow halo)
+  // ============================================
+  const haloGeo = new THREE.SphereGeometry(2.2, 32, 32);
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: 0x06B6D4,
+    transparent: true,
+    opacity: 0.15,
+    side: THREE.BackSide,
+  });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  group.add(halo);
+
+  // ============================================
+  // 3) الحلقة الدوارة الأولى (أفقية)
+  // ============================================
+  const ring1Geo = new THREE.TorusGeometry(2.8, 0.05, 16, 100);
+  const ring1Mat = new THREE.MeshBasicMaterial({
+    color: 0x06B6D4,
+    transparent: true,
+    opacity: 0.9,
+  });
+  const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+  ring1.rotation.x = Math.PI / 2;
+  group.add(ring1);
+
+  // ============================================
+  // 4) الحلقة الدوارة الثانية (مائلة)
+  // ============================================
+  const ring2Geo = new THREE.TorusGeometry(3.5, 0.04, 16, 100);
+  const ring2Mat = new THREE.MeshBasicMaterial({
+    color: 0x8B5CF6,
+    transparent: true,
+    opacity: 0.7,
+  });
+  const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+  ring2.rotation.x = Math.PI / 3;
+  ring2.rotation.y = Math.PI / 4;
+  group.add(ring2);
+
+  // ============================================
+  // 5) حلقة ثالثة رقيقة (تفاصيل)
+  // ============================================
+  const ring3Geo = new THREE.TorusGeometry(4.2, 0.02, 8, 80);
+  const ring3Mat = new THREE.MeshBasicMaterial({
+    color: 0xEC4899,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const ring3 = new THREE.Mesh(ring3Geo, ring3Mat);
+  ring3.rotation.x = Math.PI / 2.5;
+  ring3.rotation.z = Math.PI / 6;
+  group.add(ring3);
+
+  // ============================================
+  // 6) الكرات الصغيرة اللي بتلف حوالين البلورة
+  // ============================================
+  const satellites = [];
+  for (let i = 0; i < 8; i++) {
+    const satGeo = new THREE.SphereGeometry(0.12, 8, 8);
+    const satMat = new THREE.MeshBasicMaterial({
+      color: [0x06B6D4, 0x8B5CF6, 0x3B82F6][i % 3],
+    });
+    const sat = new THREE.Mesh(satGeo, satMat);
+
+    const angle = (i / 8) * Math.PI * 2;
+    const radius = 3.5 + Math.random() * 0.5;
+    const height = (Math.random() - 0.5) * 2;
+
+    sat.userData = {
+      angle,
+      radius,
+      height,
+      speed: 0.5 + Math.random() * 0.5,
+      baseY: height,
+    };
+
+    group.add(sat);
+    satellites.push(sat);
+  }
+
+  // ============================================
+  // 7) إضاءة قوية من البلورة (Core Light)
+  // ============================================
+  const coreLight = new THREE.PointLight(0x06B6D4, 5, 30);
+  coreLight.castShadow = true;
+  group.add(coreLight);
+
+  // إضاءة ثانوية بنفسجية
+  const coreLight2 = new THREE.PointLight(0x8B5CF6, 3, 25);
+  coreLight2.position.set(0, 1, 0);
+  group.add(coreLight2);
+
+  // ============================================
+  // 8) القاعدة تحت البلورة (Base Platform)
+  // ============================================
+  const baseGroup = new THREE.Group();
+  baseGroup.position.y = -4; // تحت البلورة
+
+  // قرص القاعدة
+  const baseDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.5, 4, 0.4, 8),
+    new THREE.MeshStandardMaterial({
+      color: 0x1A1A25,
+      roughness: 0.5,
+      metalness: 0.7,
+      emissive: 0x8B5CF6,
+      emissiveIntensity: 0.1,
+    })
+  );
+  baseDisc.castShadow = true;
+  baseDisc.receiveShadow = true;
+  baseGroup.add(baseDisc);
+
+  // قرص داخلي مضيء
+  const baseRing = new THREE.Mesh(
+    new THREE.TorusGeometry(2.8, 0.08, 12, 40),
+    new THREE.MeshBasicMaterial({
+      color: 0x06B6D4,
+      transparent: true,
+      opacity: 0.9,
+    })
+  );
+  baseRing.rotation.x = Math.PI / 2;
+  baseRing.position.y = 0.21;
+  baseGroup.add(baseRing);
+
+  scene.add(baseGroup);
+
+  // ============================================
+  // 9) أشعة الضوء من البلورة للأرض
+  // ============================================
+  const beams = [];
+  for (let i = 0; i < 6; i++) {
+    const beamGeo = new THREE.CylinderGeometry(0.03, 0.08, 4, 6);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0x06B6D4,
+      transparent: true,
+      opacity: 0.4,
+    });
+    const beam = new THREE.Mesh(beamGeo, beamMat);
+
+    const angle = (i / 6) * Math.PI * 2;
+    beam.position.set(Math.cos(angle) * 1.5, -2, Math.sin(angle) * 1.5);
+    beam.rotation.z = Math.cos(angle) * 0.3;
+    beam.rotation.x = Math.sin(angle) * 0.3;
+
+    group.add(beam);
+    beams.push(beam);
+  }
+
+  // ============================================
+  // إضافة الـ AI Core للمشهد
+  // ============================================
+  scene.add(group);
+
+  // حفظ المراجع للأنيميشن
+  aiCore.group = group;
+  aiCore.crystal = crystal;
+  aiCore.ring1 = ring1;
+  aiCore.ring2 = ring2;
+  aiCore.ring3 = ring3;
+  aiCore.satellites = satellites;
+  aiCore.light = coreLight;
+}
+
+createAICore();
+
+
+// ============================================
 // ROOM DECORATIONS (تفاصيل كل غرفة)
 // ============================================
 function createAboutRoom() {
@@ -532,7 +924,7 @@ const player = {
   mixer: null,
   actions: {},
   currentAction: null,
-  position: new THREE.Vector3(0, 0, 0),
+  position: new THREE.Vector3(0, 0.3, 12),
   rotation: 0,
   currentSpeed: 0,
   maxWalkSpeed: 4,
@@ -887,15 +1279,70 @@ function animateOrbs(time) {
   });
 }
 
+
+function updateCentralPath(time) {
+  // 1) نبض خطوط النيون الجانبية
+  centralPath.neonLines.forEach((item, idx) => {
+    if (item.isHorizontal) {
+      // الخطوط العرضية — تتحرك للأمام زي كهرباء
+      item.mesh.position.z = item.baseZ + Math.sin(time * 1.5 + item.offset) * 1.5;
+      item.mesh.material.opacity = 0.4 + Math.sin(time * 3 + item.offset) * 0.3;
+    } else {
+      // الخطوط الجانبية — تنبض
+      item.mesh.material.opacity = 0.7 + Math.sin(time * 2 + idx) * 0.25;
+    }
+  });
+
+  // 2) نبض الأعمدة
+  centralPath.pillars.forEach((pillar, i) => {
+    pillar.material.emissiveIntensity = 0.3 + Math.sin(time * 1.5 + i * 0.5) * 0.2;
+  });
+}
+
+
+function updateAICore(time, delta) {
+  if (!aiCore.group) return;
+
+  // 1) دوران البلورة
+  aiCore.crystal.rotation.y += delta * 0.3;
+  aiCore.crystal.rotation.x += delta * 0.1;
+
+  // نبض الإضاءة
+  const pulse = 1.8 + Math.sin(time * 1.5) * 0.4;
+  aiCore.crystal.material.emissiveIntensity = pulse;
+  aiCore.light.intensity = 4 + Math.sin(time * 1.5) * 1.5;
+
+  // 2) دوران الحلقات
+  aiCore.ring1.rotation.z += delta * 0.5;
+  aiCore.ring2.rotation.y += delta * 0.3;
+  aiCore.ring2.rotation.x += delta * 0.2;
+  if (aiCore.ring3) {
+    aiCore.ring3.rotation.z -= delta * 0.4;
+    aiCore.ring3.rotation.y += delta * 0.15;
+  }
+
+  // 3) حركة الكرات الصغيرة
+  aiCore.satellites.forEach(sat => {
+    sat.userData.angle += delta * sat.userData.speed;
+    sat.position.x = Math.cos(sat.userData.angle) * sat.userData.radius;
+    sat.position.z = Math.sin(sat.userData.angle) * sat.userData.radius;
+    sat.position.y = sat.userData.baseY + Math.sin(time * 2 + sat.userData.angle) * 0.3;
+  });
+
+  // 4) ارتداد خفيف للبلورة (floating effect)
+  aiCore.group.position.y = 4 + Math.sin(time * 0.8) * 0.15;
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
-  // نحدد أقصى delta عشان القفزات بعد تبديل التاب ما تبوظش الحركة
   const delta = Math.min(clock.getDelta(), 0.05);
   const time = clock.getElapsedTime();
 
   updatePlayer(delta);
   animateOrbs(time);
+  updateAICore(time, delta);
+  updateCentralPath(time);  // ← ✨ جديد
 
   if (player.mixer) player.mixer.update(delta);
 
@@ -941,6 +1388,9 @@ async function init() {
 
     setProgress(60);
     await loadAnimations();
+        // ضع Maria على الممر
+    player.position.set(0, 0.3, 12);
+    player.object.position.copy(player.position);
     setProgress(90);
 
     playAction("idle");
