@@ -997,6 +997,188 @@ function createAICore() {
 
 createAICore();
 
+// ============================================
+// ✨ INTERACTIVE STATIONS
+// ============================================
+const stations = [];
+window.stations = stations;
+
+function createStation({ id, name, color, position }) {
+  const group = new THREE.Group();
+  group.position.set(...position);
+
+  // قاعدة
+  const baseDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.8, 2.2, 0.3, 32),
+    new THREE.MeshStandardMaterial({
+      color: 0x1A1A25,
+      roughness: 0.3,
+      metalness: 0.9,
+      emissive: color,
+      emissiveIntensity: 0.2,
+    })
+  );
+  baseDisc.receiveShadow = true;
+  baseDisc.castShadow = true;
+  group.add(baseDisc);
+
+  // حلقة نيون
+  const baseRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.9, 0.08, 12, 60),
+    new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.95,
+    })
+  );
+  baseRing.rotation.x = Math.PI / 2;
+  baseRing.position.y = 0.2;
+  group.add(baseRing);
+
+  // عمود
+  const pillar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.7, 2.5, 16),
+    new THREE.MeshStandardMaterial({
+      color: 0x1A1A25,
+      roughness: 0.4,
+      metalness: 0.8,
+      emissive: color,
+      emissiveIntensity: 0.3,
+    })
+  );
+  pillar.position.y = 1.5;
+  pillar.castShadow = true;
+  group.add(pillar);
+
+  // هولوجرام (بلورة)
+  const holoCrystal = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.7, 1),
+    new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 2,
+      flatShading: true,
+      transparent: true,
+      opacity: 0.85,
+    })
+  );
+  holoCrystal.position.y = 3.5;
+  group.add(holoCrystal);
+
+  // حلقة 1
+  const holoRing1 = new THREE.Mesh(
+    new THREE.TorusGeometry(1.2, 0.03, 12, 60),
+    new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.9,
+    })
+  );
+  holoRing1.rotation.x = Math.PI / 2;
+  holoRing1.position.y = 3.5;
+  group.add(holoRing1);
+
+  // حلقة 2
+  const holoRing2 = new THREE.Mesh(
+    new THREE.TorusGeometry(1.5, 0.02, 12, 60),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.6,
+    })
+  );
+  holoRing2.rotation.x = Math.PI / 3;
+  holoRing2.rotation.y = Math.PI / 4;
+  holoRing2.position.y = 3.5;
+  group.add(holoRing2);
+
+  // لافتة
+  const labelCanvas = document.createElement("canvas");
+  labelCanvas.width = 512;
+  labelCanvas.height = 128;
+  const ctx = labelCanvas.getContext("2d");
+  ctx.fillStyle = "#0A0A0F";
+  ctx.fillRect(0, 0, 512, 128);
+  ctx.fillStyle = "#" + color.toString(16).padStart(6, "0");
+  ctx.font = "bold 56px Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(name.toUpperCase(), 256, 64);
+
+  const labelTexture = new THREE.CanvasTexture(labelCanvas);
+  const labelMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(3, 0.75),
+    new THREE.MeshBasicMaterial({
+      map: labelTexture,
+      transparent: true,
+      side: THREE.DoubleSide,
+    })
+  );
+  labelMesh.position.y = 5.5;
+  group.add(labelMesh);
+
+  // إضاءة
+  const light = new THREE.PointLight(color, 3, 12);
+  light.position.y = 3.5;
+  group.add(light);
+
+  scene.add(group);
+
+  // حفظ المراجع
+  group.userData = {
+    holoCrystal,
+    holoRing1,
+    holoRing2,
+    light,
+    baseRing,
+  };
+
+  const station = {
+    id,
+    name,
+    color,
+    position: new THREE.Vector3(...position),
+    group,
+    interactDistance: 3.5,
+  };
+  stations.push(station);
+
+  return station;
+}
+
+function createAllStations() {
+  createStation({
+    id: "about",
+    name: "About",
+    color: 0x8B5CF6,
+    position: [-25, 0, -20],
+  });
+
+  createStation({
+    id: "projects",
+    name: "Projects",
+    color: 0x3B82F6,
+    position: [25, 0, -20],
+  });
+
+  createStation({
+    id: "skills",
+    name: "Skills",
+    color: 0x06B6D4,
+    position: [-25, 0, 20],
+  });
+
+  createStation({
+    id: "contact",
+    name: "Contact",
+    color: 0xEC4899,
+    position: [25, 0, 20],
+  });
+}
+
+createAllStations();
+
+
 
 // ============================================
 // ROOM DECORATIONS (تفاصيل كل غرفة)
