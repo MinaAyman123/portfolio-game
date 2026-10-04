@@ -2031,6 +2031,31 @@ function animateOrbs(time) {
   });
 }
 
+function updateStations(time, delta) {
+  stations.forEach((station, idx) => {
+    const { holoCrystal, holoRing1, holoRing2, light, baseRing } = station.group.userData;
+
+    // دوران البلورة
+    holoCrystal.rotation.y += delta * 0.5;
+    holoCrystal.rotation.x += delta * 0.3;
+
+    // نبض الإضاءة
+    const pulse = 1.8 + Math.sin(time * 2 + idx) * 0.5;
+    holoCrystal.material.emissiveIntensity = pulse;
+    light.intensity = 3 + Math.sin(time * 2 + idx) * 1;
+
+    // دوران الحلقات
+    holoRing1.rotation.z += delta * 0.8;
+    holoRing2.rotation.y += delta * 0.4;
+    holoRing2.rotation.z += delta * 0.6;
+
+    // نبض حلقة القاعدة
+    baseRing.material.opacity = 0.7 + Math.sin(time * 3 + idx) * 0.3;
+  });
+}
+
+
+
 
 function updatePlatforms(time) {
   // نبض خفيف على المنصات
@@ -2107,8 +2132,8 @@ function animate() {
   animateOrbs(time);
   updateAICore(time, delta);
   updateCentralPath(time);
-  updatePlatforms(time);  // ← ✨ جديد
-
+  updatePlatforms(time);
+  updateStations(time, delta);
   if (player.mixer) player.mixer.update(delta);
 
   doors.forEach((door, i) => {
