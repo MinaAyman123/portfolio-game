@@ -1091,11 +1091,8 @@ function createStars() {
 
   planets.forEach(({ color, position, radius }) => {
     const planetGeo = new THREE.SphereGeometry(radius, 24, 24);
-    const planetMat = new THREE.MeshStandardMaterial({
-      color: color,
-      emissive: color,
-      emissiveIntensity: 0.8,
-      roughness: 0.8,
+    const planetMat = new THREE.MeshBasicMaterial({
+      color: color,  // ← MeshBasicMaterial بدون emissive
     });
     const planet = new THREE.Mesh(planetGeo, planetMat);
     planet.position.set(...position);
@@ -1644,8 +1641,9 @@ const player = {
   smoothY: 0.3,
   yLerpSpeed: 20,         // ← سرّعناها شوي
   targetY: 0.3,
+   jumpConsumed: false,  // ✨ جديد
 };
-
+window.player = player;
 
 
 
@@ -1727,6 +1725,8 @@ function playAction(name, fade = 0.25) {
 // INPUT
 // ============================================
 const keys = {};
+window.gameKeys = keys;  // ✨ اسم مختلف عشان مايتعارضش مع built-in
+
 let cameraAngle = 0;
 let cameraPitch = 0.15;
 
@@ -1747,6 +1747,12 @@ window.addEventListener("keydown", (e) => {
   }
   
   keys[e.code] = true;
+  
+  // ✨ القفز المباشر — من غير انتظار updatePlayer
+  if (e.code === "Space" && player.isGrounded) {
+    player.velocityY = player.jumpForce;
+    player.isGrounded = false;
+  }
   
   if (e.code === "KeyE") tryInteract();
 });
@@ -1857,6 +1863,8 @@ function checkNearbyTarget() {
   const prevKey = currentTarget ? `${currentTarget.type}-${currentTarget.id}` : null;
 
   if (currentKey !== prevKey) {
+    const statusText = document.getElementById("statusText");
+    
     if (nearest) {
       currentTarget = {
         type,
@@ -1867,9 +1875,15 @@ function checkNearbyTarget() {
       const prefix = type === "station" ? "Use" : "Enter";
       const displayName = type === "station" ? nearest.name : nearest.id.toUpperCase();
       interactHint.innerHTML = `Press <kbd>E</kbd> to ${prefix} <strong style="color:#06B6D4">${displayName}</strong>`;
+      
+      // ✨ نحدّث الـstatus
+      if (statusText) statusText.textContent = `Near: ${displayName}`;
     } else {
       currentTarget = null;
       interactHint.classList.add("hidden");
+      
+      // ✨ نرجّع الـstatus للأصل
+      if (statusText) statusText.textContent = "Exploring";
     }
   }
 }
@@ -2106,56 +2120,60 @@ function updatePlayer(delta) {
   }
   // ✨ 3.b) كشف الأرض + الجاذبية + Step Height
   const groundY = getGroundY(player.position.x, player.position.z);
-
-  // القفز
-  if (keys["Space"] && player.isGrounded) {
-    player.velocityY = player.jumpForce;
-    player.isGrounded = false;
-    keys["Space"] = false;
-  }
-  // ✨ نحدد الـtargetY
   player.targetY = groundY;
 
-  // لو Maria تحت الهدف (لازم تطلع — سلم أو منصة)
-  if (player.position.y < player.targetY - 0.02) {
-    const diff = player.targetY - player.position.y;
-    
-    // ✨ نصعد بنعومة لأي فرق
-    if (diff <= player.stepHeight) {
-      player.position.y += diff * Math.min(player.yLerpSpeed * delta, 1);
-      player.velocityY = 0;
-      player.isGrounded = true;
-    } else {
-      // فرق كبير — امنع الحركة بس
-      player.currentSpeed *= 0.5;
-    }
-  } 
-  // لو Maria فوق الهدف (لازم تنزل — جاذبية)
-  else if (player.position.y > player.targetY + 0.02) {
+  // ✨ لو Maria في الهوا (اتنقلت من jump) — نطبق الجاذبية
+  if (!player.isGrounded) {
+    // ✨ نطبق الجاذبية
     player.velocityY += player.gravity * delta;
     player.position.y += player.velocityY * delta;
-    
+
+    // ✨ لو رجعت للأرض
     if (player.position.y <= player.targetY) {
       player.position.y = player.targetY;
       player.velocityY = 0;
       player.isGrounded = true;
-    } else {
-      player.isGrounded = false;
     }
   } 
-  // في النطاق (على نفس المستوى)
+  // ✨ لو Maria على الأرض — نطبق step height والـ smooth
   else {
-    player.position.y = player.targetY;
-    player.velocityY = 0;
-    player.isGrounded = true;
-  } 
+    // ✨ لو تحت الهدف (نطلع سلم أو منصة)
+    if (player.position.y < player.targetY - 0.02) {
+      const diff = player.targetY - player.position.y;
+      
+      if (diff <= player.stepHeight) {
+        // ✨ نصعد بنعومة (سلم)
+        player.position.y += diff * Math.min(player.yLerpSpeed * delta, 1);
+      } else {
+        // فرق كبير — نوقف الحركة الأفقية
+        player.currentSpeed *= 0.5;
+      }
+    } 
+    // ✨ لو فوق الهدف (ننزل بميل)
+    else if (player.position.y > player.targetY + 0.02) {
+      player.velocityY += player.gravity * delta;
+      player.position.y += player.velocityY * delta;
+      
+      if (player.position.y <= player.targetY) {
+        player.position.y = player.targetY;
+        player.velocityY = 0;
+      }
+    } 
+    // ✨ على نفس المستوى
+    else {
+      player.position.y = player.targetY;
+      player.velocityY = 0;
+    }
+  }
 
-  // ✨ حماية إضافية — لو فوق الأرض بكتير (مثلاً في نص الجو)
+  // ✨ حماية إضافية
   if (player.position.y < 0.3) {
     player.position.y = 0.3;
     player.velocityY = 0;
+    player.isGrounded = true;
   }
 
+  
   // 4) تحديث الـCharacter
   player.object.position.copy(player.position);
   player.object.rotation.y = player.rotation;
@@ -2361,6 +2379,10 @@ async function init() {
 
     hud.classList.remove("hidden");
     clickToStart.classList.remove("hidden");
+    
+    // ✨ نظهر الـBottom HUD
+    const bottomHud = document.getElementById("bottomHud");
+    if (bottomHud) bottomHud.classList.remove("hidden");
 
     animate();
 
