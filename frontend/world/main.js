@@ -1678,39 +1678,81 @@ document.addEventListener("mousemove", (e) => {
   cameraPitch = clamp(cameraPitch, -0.4, 1.0);
 });
 
-
 // ============================================
-// INTERACTION
+// INTERACTION (يدعم الأبواب + المحطات)
 // ============================================
 const interactHint = document.getElementById("interactHint");
-let currentNearbyDoor = null;
+let currentTarget = null; // { type: "door" | "station", id, name }
 
-function checkNearbyDoor() {
-  let nearest = null;
-  let minDist = Infinity;
+function checkNearbyTarget() {
+  let nearestDoor = null;
+  let nearestDoorDist = Infinity;
+  let nearestStation = null;
+  let nearestStationDist = Infinity;
 
+  // ✨ نشوف الأبواب القريبة
   doors.forEach(door => {
     const dist = player.position.distanceTo(door.position);
-    if (dist < door.interactDistance && dist < minDist) {
-      minDist = dist;
-      nearest = door;
+    if (dist < door.interactDistance && dist < nearestDoorDist) {
+      nearestDoorDist = dist;
+      nearestDoor = door;
     }
   });
 
-  if (nearest !== currentNearbyDoor) {
-    currentNearbyDoor = nearest;
-    if (nearest) {
-      interactHint.classList.remove("hidden");
-      interactHint.innerHTML = `Press <kbd>E</kbd> to enter ${nearest.id.toUpperCase()}`;
+  // ✨ نشوف المحطات القريبة
+  stations.forEach(station => {
+    const dist = player.position.distanceTo(station.position);
+    if (dist < station.interactDistance && dist < nearestStationDist) {
+      nearestStationDist = dist;
+      nearestStation = station;
+    }
+  });
+
+  // ✨ نختار الأقرب
+  let nearest = null;
+  let type = null;
+
+  if (nearestDoor && nearestStation) {
+    if (nearestDoorDist < nearestStationDist) {
+      nearest = nearestDoor;
+      type = "door";
     } else {
+      nearest = nearestStation;
+      type = "station";
+    }
+  } else if (nearestDoor) {
+    nearest = nearestDoor;
+    type = "door";
+  } else if (nearestStation) {
+    nearest = nearestStation;
+    type = "station";
+  }
+
+  // ✨ نحدّث الـHUD
+  const currentKey = nearest ? `${type}-${nearest.id}` : null;
+  const prevKey = currentTarget ? `${currentTarget.type}-${currentTarget.id}` : null;
+
+  if (currentKey !== prevKey) {
+    if (nearest) {
+      currentTarget = {
+        type,
+        id: nearest.id,
+        name: nearest.name || nearest.id,
+      };
+      interactHint.classList.remove("hidden");
+      const prefix = type === "station" ? "Use" : "Enter";
+      const displayName = type === "station" ? nearest.name : nearest.id.toUpperCase();
+      interactHint.innerHTML = `Press <kbd>E</kbd> to ${prefix} <strong style="color:#06B6D4">${displayName}</strong>`;
+    } else {
+      currentTarget = null;
       interactHint.classList.add("hidden");
     }
   }
 }
 
 function tryInteract() {
-  if (!currentNearbyDoor) return;
-  openRoomPanel(currentNearbyDoor.id);
+  if (!currentTarget) return;
+  openRoomPanel(currentTarget.id);
 }
 
 // ============================================
@@ -2021,7 +2063,7 @@ function updatePlayer(delta) {
     player.position.z
   );
 
-  checkNearbyDoor();
+  checkNearbyTarget();
 }
 
 function animateOrbs(time) {
