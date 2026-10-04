@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+
 // ============================================
 // CONFIG
 // ============================================
@@ -90,6 +95,24 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ============================================
+// ✨ POST-PROCESSING (Bloom)
+// ============================================
+const composer = new EffectComposer(renderer);
+composer.setSize(window.innerWidth, window.innerHeight);
+
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.8,    // ← قوة الـBloom (0.0 - 3.0)
+  0.4,    // ← انتشار (0.0 - 1.0)
+  0.85    // ← العتبة (0.0 - 1.0)
+);
+composer.addPass(bloomPass);
+
 
 // ============================================
 // LIGHTS
@@ -1913,7 +1936,8 @@ function animate() {
     }
   });
 
-  renderer.render(scene, camera);
+  composer.render();
+
 }
 
 // ============================================
@@ -1923,6 +1947,7 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ============================================
