@@ -1003,6 +1003,124 @@ function createAICore() {
 
 createAICore();
 
+
+// ============================================
+// ✨ STARS + NEBULA (خلفية سينمائية)
+// ============================================
+const starsGroup = new THREE.Group();
+
+function createStars() {
+  // ============================================
+  // 1) 300 نجمة صغيرة
+  // ============================================
+  const starCount = 300;
+  const starGeo = new THREE.BufferGeometry();
+  const starPositions = new Float32Array(starCount * 3);
+  const starColors = new Float32Array(starCount * 3);
+
+  const palette = [
+    new THREE.Color(0xFFFFFF),  // أبيض
+    new THREE.Color(0x8B5CF6),  // بنفسجي
+    new THREE.Color(0x06B6D4),  // سماوي
+    new THREE.Color(0x3B82F6),  // أزرق
+    new THREE.Color(0xEC4899),  // وردي
+  ];
+
+  for (let i = 0; i < starCount; i++) {
+    // نوزعهم على كرة كبيرة
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 2 - 1);
+    const radius = 150 + Math.random() * 30;
+
+    starPositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    starPositions[i * 3 + 1] = Math.abs(radius * Math.cos(phi)) - 20; // فوق بس
+    starPositions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+    // لون عشوائي
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    starColors[i * 3] = color.r;
+    starColors[i * 3 + 1] = color.g;
+    starColors[i * 3 + 2] = color.b;
+  }
+
+  starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+  starGeo.setAttribute("color", new THREE.BufferAttribute(starColors, 3));
+
+  const starMat = new THREE.PointsMaterial({
+    size: 0.8,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    sizeAttenuation: true,
+  });
+
+  const stars = new THREE.Points(starGeo, starMat);
+  starsGroup.add(stars);
+
+  // ============================================
+  // 2) 3 سُحب Nebula (بنفسجي/سماوي/وردي)
+  // ============================================
+  const nebulaColors = [
+    { color: 0x8B5CF6, position: [-60, 40, -80], scale: 60 },  // بنفسجي
+    { color: 0x06B6D4, position: [80, 50, -60], scale: 50 },   // سماوي
+    { color: 0xEC4899, position: [0, 60, -100], scale: 40 },   // وردي
+  ];
+
+  nebulaColors.forEach(({ color, position, scale }) => {
+    const nebulaGeo = new THREE.SphereGeometry(scale, 32, 32);
+    const nebulaMat = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.06,
+      side: THREE.BackSide,
+      depthWrite: false,
+    });
+    const nebula = new THREE.Mesh(nebulaGeo, nebulaMat);
+    nebula.position.set(...position);
+    starsGroup.add(nebula);
+  });
+
+  // ============================================
+  // 3) 3 كواكب بعيدة صغيرة
+  // ============================================
+  const planets = [
+    { color: 0x8B5CF6, position: [-100, 60, -120], radius: 4 },
+    { color: 0x06B6D4, position: [120, 70, -100], radius: 3 },
+    { color: 0xEC4899, position: [80, 40, -140], radius: 2.5 },
+  ];
+
+  planets.forEach(({ color, position, radius }) => {
+    const planetGeo = new THREE.SphereGeometry(radius, 24, 24);
+    const planetMat = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.8,
+      roughness: 0.8,
+    });
+    const planet = new THREE.Mesh(planetGeo, planetMat);
+    planet.position.set(...position);
+    starsGroup.add(planet);
+
+    // حلقة حوالين الكوكب (اختياري)
+    const ringGeo = new THREE.TorusGeometry(radius * 1.8, 0.1, 8, 60);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.5,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2.5;
+    ring.rotation.z = Math.PI / 6;
+    ring.position.copy(planet.position);
+    starsGroup.add(ring);
+  });
+
+  scene.add(starsGroup);
+}
+
+createStars();
+
+
 // ============================================
 // ✨ INTERACTIVE STATIONS
 // ============================================
