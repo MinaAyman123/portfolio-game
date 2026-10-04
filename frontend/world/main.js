@@ -232,6 +232,12 @@ function createDoor({ id, label, color, pos }) {
 
 doorDefs.forEach(d => doors.push(createDoor(d)));
 
+// ✨ نخفي الأبواب القديمة (المحطات بقت هي التفاعل الأساسي)
+doors.forEach(door => {
+  door.group.visible = false;
+});
+
+
 // ============================================
 // CENTRAL PATH (الممر المركزي)
 // ============================================
