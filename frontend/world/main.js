@@ -395,6 +395,380 @@ function createCentralPath() {
 
 createCentralPath();
 
+// ============================================
+// ✨ WALKABLE MESHES (لازم تكون معرّفة قبل الاستخدام)
+// ============================================
+const walkableMeshes = [];
+
+// ✨ Raycaster لكشف الأرض
+const groundRaycaster = new THREE.Raycaster();
+const groundRayOrigin = new THREE.Vector3();
+const groundRayDirection = new THREE.Vector3(0, -1, 0);
+
+// ============================================
+// PLATFORMS (منصات ومستويات)
+// ============================================
+const platforms = {
+  list: [],
+  stairs: [],
+  bridges: [],
+};
+
+function createStairs(baseX, baseY, baseZ, steps, stepHeight, stepDepth, width, direction) {
+  // direction: "z" للأمام، "-z" للخلف، "x" لليمين، "-x" لليسار
+  const group = new THREE.Group();
+
+  const stairMat = new THREE.MeshStandardMaterial({
+    color: 0x1A1A25,
+    roughness: 0.5,
+    metalness: 0.6,
+    emissive: 0x8B5CF6,
+    emissiveIntensity: 0.1,
+  });
+
+  const stepGeo = new THREE.BoxGeometry(
+    direction.includes("x") ? stepDepth : width,
+    stepHeight,
+    direction.includes("x") ? width : stepDepth
+  );
+
+  for (let i = 0; i < steps; i++) {
+    const step = new THREE.Mesh(stepGeo, stairMat);
+    const offset = i * (direction.includes("x") ? stepDepth : stepDepth);
+
+    if (direction === "z") {
+      step.position.set(0, baseY + i * stepHeight + stepHeight / 2, offset);
+    } else if (direction === "-z") {
+      step.position.set(0, baseY + i * stepHeight + stepHeight / 2, -offset);
+    } else if (direction === "x") {
+      step.position.set(offset, baseY + i * stepHeight + stepHeight / 2, 0);
+    } else {
+      step.position.set(-offset, baseY + i * stepHeight + stepHeight / 2, 0);
+    }
+
+    step.receiveShadow = true;
+    step.castShadow = true;
+    group.add(step);
+    walkableMeshes.push(step);  // ← ✨ Maria تقدر تصعد
+
+    // خط نيون على حافة السلم
+    if (i % 2 === 0) {
+      const neon = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          direction.includes("x") ? 0.1 : width,
+          0.03,
+          direction.includes("x") ? width : 0.1
+        ),
+        new THREE.MeshBasicMaterial({ color: 0x06B6D4, transparent: true, opacity: 0.8 })
+      );
+      neon.position.copy(step.position);
+      neon.position.y += stepHeight / 2 + 0.02;
+
+      if (direction === "z") neon.position.z += stepDepth / 2 - 0.05;
+      else if (direction === "-z") neon.position.z -= stepDepth / 2 - 0.05;
+      else if (direction === "x") neon.position.x += stepDepth / 2 - 0.05;
+      else neon.position.x -= stepDepth / 2 - 0.05;
+
+      group.add(neon);
+    }
+  }
+
+  group.position.set(baseX, 0, baseZ);
+  scene.add(group);
+
+  platforms.stairs.push(group);
+  return group;
+}
+
+function createPlatform(x, y, z, width, depth, color, hasRailing = true) {
+  const group = new THREE.Group();
+  group.position.set(x, y, z);
+
+  // المنصة نفسها
+  const platformMat = new THREE.MeshStandardMaterial({
+    color: 0x15152A,
+    roughness: 0.4,
+    metalness: 0.7,
+    emissive: color,
+    emissiveIntensity: 0.08,
+  });
+
+  const plat = new THREE.Mesh(
+    new THREE.BoxGeometry(width, 0.4, depth),
+    platformMat
+  );
+  plat.receiveShadow = true;
+  plat.castShadow = true;
+  group.add(plat);
+
+    walkableMeshes.push(plat);  // ← ✨ Maria تقدر تقف عليه
+
+
+  // خط نيون حول الحواف (أربع خطوط)
+  const neonMat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.9,
+  });
+
+  // خط الأمامي
+  const frontLine = new THREE.Mesh(
+    new THREE.BoxGeometry(width, 0.06, 0.15),
+    neonMat
+  );
+  frontLine.position.set(0, 0.23, depth / 2 - 0.1);
+  group.add(frontLine);
+
+  // خط الخلفي
+  const backLine = frontLine.clone();
+  backLine.position.z = -depth / 2 + 0.1;
+  group.add(backLine);
+
+  // خط يمين
+  const rightLine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.15, 0.06, depth),
+    neonMat
+  );
+  rightLine.position.set(width / 2 - 0.1, 0.23, 0);
+  group.add(rightLine);
+
+  // خط يسار
+  const leftLine = rightLine.clone();
+  leftLine.position.x = -width / 2 + 0.1;
+  group.add(leftLine);
+
+  // درابزين (railing)
+  if (hasRailing) {
+    const railingMat = new THREE.MeshStandardMaterial({
+      color: 0x1A1A25,
+      metalness: 0.8,
+      roughness: 0.3,
+    });
+
+    const railHeight = 1.2;
+
+    // درابزين خلفي
+    for (let i = -width / 2 + 0.5; i < width / 2; i += 1.5) {
+      const post = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.05, railHeight, 8),
+        railingMat
+      );
+      post.position.set(i, 0.2 + railHeight / 2, -depth / 2 + 0.2);
+      group.add(post);
+    }
+
+    // درابزين يمين
+    for (let i = -depth / 2 + 0.5; i < depth / 2; i += 1.5) {
+      const post = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.05, railHeight, 8),
+        railingMat
+      );
+      post.position.set(width / 2 - 0.2, 0.2 + railHeight / 2, i);
+      group.add(post);
+    }
+
+    // درابزين يسار
+    for (let i = -depth / 2 + 0.5; i < depth / 2; i += 1.5) {
+      const post = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.05, railHeight, 8),
+        railingMat
+      );
+      post.position.set(-width / 2 + 0.2, 0.2 + railHeight / 2, i);
+      group.add(post);
+    }
+  }
+
+  // إضاءة نقطية على المنصة
+  const light = new THREE.PointLight(color, 2, 15);
+  light.position.set(0, 2, 0);
+  group.add(light);
+
+  scene.add(group);
+  platforms.list.push(group);
+  return group;
+}
+
+function createLevelDesign() {
+  // ============================================
+  // منصة 1 — وسط (y=3) على اليمين
+  // ============================================
+  const p1 = createPlatform(
+    18, 3, 0,      // x, y, z
+    8, 8,          // العرض، العمق
+    0x8B5CF6       // بنفسجي
+  );
+
+  // تفاصيل على المنصة 1 — شاشات
+  for (let i = 0; i < 2; i++) {
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 1.3, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+    );
+    frame.position.set(-2 + i * 4, 2, -2);
+    p1.add(frame);
+
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.85, 1.15),
+      new THREE.MeshStandardMaterial({
+        color: 0x8B5CF6,
+        emissive: 0x8B5CF6,
+        emissiveIntensity: 0.8,
+      })
+    );
+    screen.position.set(-2 + i * 4, 2, -1.9);
+    p1.add(screen);
+  }
+
+  // ============================================
+  // منصة 2 — عالية (y=6) على الشمال
+  // ============================================
+  const p2 = createPlatform(
+    -18, 6, 0,     // x, y, z
+    8, 8,          // العرض، العمق
+    0x06B6D4       // سماوي
+  );
+
+  // تفاصيل على المنصة 2 — بلورة صغيرة + شاشة
+  const smallCrystal = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.6, 1),
+    new THREE.MeshStandardMaterial({
+      color: 0x06B6D4,
+      emissive: 0x06B6D4,
+      emissiveIntensity: 1.5,
+      flatShading: true,
+    })
+  );
+  smallCrystal.position.set(0, 2.5, 0);
+  p2.add(smallCrystal);
+
+  // حلقة دوّارة حوالين البلورة
+  const smallRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.2, 0.03, 8, 40),
+    new THREE.MeshBasicMaterial({ color: 0x06B6D4 })
+  );
+  smallRing.rotation.x = Math.PI / 2;
+  smallRing.position.set(0, 2.5, 0);
+  p2.add(smallRing);
+
+  // شاشة عرض كبيرة
+  const bigScreen = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 2, 0.15),
+    new THREE.MeshStandardMaterial({ color: 0x1A1A25 })
+  );
+  bigScreen.position.set(0, 2, -3);
+  p2.add(bigScreen);
+
+  const bigScreenDisplay = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.8, 1.8),
+    new THREE.MeshStandardMaterial({
+      color: 0x06B6D4,
+      emissive: 0x06B6D4,
+      emissiveIntensity: 0.7,
+    })
+  );
+  bigScreenDisplay.position.set(0, 2, -2.9);
+  p2.add(bigScreenDisplay);
+  // ============================================
+  // سلالم المنصة 1 (بنفسجي) — ملزوقة في حرفها الأمامي
+  // المنصة: center=(18, 3, 0), size=8×8
+  // حرف أمامي: z = 0 - 4 = -4
+  // السلم: من z = -4 لـ z = 0 (طوله 4 وحدات)
+  // 6 درجات × 0.667 = 4 وحدات
+  // ============================================
+  createStairs(
+    18, 0, -4,        // يبدأ من حرف المنصة الأمامي (z = -4)
+    6,                // 6 درجات
+    0.5,              // ارتفاع الدرجة (6 × 0.5 = 3 → يوصل y=3)
+    0.667,            // عمق الدرجة (6 × 0.667 = 4 → يوصل z=0)
+    3,                // عرض السلم
+    "z"               // ناحية المنصة
+  );
+
+  // ============================================
+  // سلالم المنصة 2 (سماوي) — ملزوقة في حرفها الأمامي
+  // المنصة: center=(-18, 6, 0), size=8×8
+  // حرف أمامي: z = 0 - 4 = -4
+  // السلم: من z = -4 لـ z = 0 (طوله 4 وحدات)
+  // 12 درجة × 0.334 = 4 وحدات
+  // ============================================
+  createStairs(
+    -18, 0, -4,
+    12,               // 12 درجة
+    0.5,              // 12 × 0.5 = 6 (يوصل y=6)
+    0.334,            // 12 × 0.334 = 4 (يوصل z=0)
+    3,
+    "z"
+  );
+
+  // ============================================
+  // جسر يربط المنصتين (y=6)
+  // ============================================
+  const bridgeMat = new THREE.MeshStandardMaterial({
+    color: 0x1A1A25,
+    roughness: 0.4,
+    metalness: 0.7,
+    emissive: 0x8B5CF6,
+    emissiveIntensity: 0.15,
+  });
+
+  const bridge = new THREE.Mesh(
+    new THREE.BoxGeometry(28, 0.3, 2.5),
+    bridgeMat
+  );
+  bridge.position.set(0, 6, -4);
+  bridge.receiveShadow = true;
+  bridge.castShadow = true;
+  scene.add(bridge);
+  walkableMeshes.push(bridge);  // ← ✨
+
+  // خط نيون على جانبي الجسر
+  const bridgeLine1 = new THREE.Mesh(
+    new THREE.BoxGeometry(28, 0.05, 0.1),
+    new THREE.MeshBasicMaterial({ color: 0x8B5CF6 })
+  );
+  bridgeLine1.position.set(0, 6.18, -4 + 1.2);
+  scene.add(bridgeLine1);
+
+  const bridgeLine2 = bridgeLine1.clone();
+  bridgeLine2.position.z = -4 - 1.2;
+  scene.add(bridgeLine2);
+
+  // ============================================
+  // منصة صغيرة ثالثة (y=3) على الشمال بعيد
+  // ============================================
+  const p3 = createPlatform(
+    -22, 3, 8,
+    5, 5,
+    0xEC4899       // وردي
+  );
+
+  // كرات مضيئة على المنصة 3
+  for (let i = 0; i < 3; i++) {
+    const orb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xEC4899 })
+    );
+    orb.position.set(-1 + i, 1, 0);
+    p3.add(orb);
+  }
+
+  // سلم المنصة 3 (وردي) — ملزوق في حرفها الأمامي
+  // المنصة: center=(-22, 3, 8), size=5×5
+  // حرف أمامي: z = 8 - 2.5 = 5.5
+  // السلم: من z = 5.5 لـ z = 10 (طوله 4.5 وحدة)
+  // 6 درجات × 0.75 = 4.5
+  createStairs(
+    -22, 0, 10,       // يبدأ من بعيد ويطلع ناحية حرف المنصة
+    6,
+    0.5,              // 6 × 0.5 = 3 (يوصل y=3)
+    0.75,             // 6 × 0.75 = 4.5
+    2.5,
+    "-z"              // ناحية z السالب (ناحية المنصة)
+  );
+}
+
+createLevelDesign();
+
 
 // ============================================
 // AI CORE (قلب النواة)
@@ -918,7 +1292,6 @@ for (let i = 0; i < 50; i++) {
 // CHARACTER + ANIMATIONS
 // ============================================
 const loader = new FBXLoader();
-
 const player = {
   object: null,
   mixer: null,
@@ -929,7 +1302,23 @@ const player = {
   currentSpeed: 0,
   maxWalkSpeed: 4,
   maxRunSpeed: 8,
+  // ✨ نظام الفيزياء
+  velocityY: 0,
+  gravity: -20,
+  jumpForce: 8,
+  isGrounded: true,
+  groundY: 0.3,
+  playerRadius: 0.5,
+  playerHeight: 1.6,
+  // ✨ جديد — للسلالم والمنصات
+  stepHeight: 1.0,        // ← زوّدناها لـ1.0 (عشان تصعد السلالم بسهولة)
+  smoothY: 0.3,
+  yLerpSpeed: 20,         // ← سرّعناها شوي
+  targetY: 0.3,
 };
+
+
+
 
 async function loadCharacter() {
   return new Promise((resolve, reject) => {
@@ -1012,13 +1401,33 @@ const keys = {};
 let cameraAngle = 0;
 let cameraPitch = 0.15;
 
+// ✨ الأزرار اللي نمنعها من السلوك الافتراضي
+const GAME_KEYS = [
+  "KeyW", "KeyA", "KeyS", "KeyD",
+  "KeyE", "KeyQ",
+  "Space",
+  "ShiftLeft", "ShiftRight",
+  "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+];
+
 window.addEventListener("keydown", (e) => {
+  // ✨ امنع السلوك الافتراضي للأزرار بتاعة اللعبة
+  if (GAME_KEYS.includes(e.code)) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
   keys[e.code] = true;
+  
   if (e.code === "KeyE") tryInteract();
-  if (e.code === "Space") e.preventDefault();
 });
 
 window.addEventListener("keyup", (e) => {
+  if (GAME_KEYS.includes(e.code)) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
   keys[e.code] = false;
 });
 
@@ -1210,6 +1619,83 @@ function chooseAnimation(absSpeed) {
   return absSpeed > RUN_UP_THRESHOLD ? "run" : "walk";
 }
 
+// ============================================
+// GROUND DETECTION
+// ============================================
+// ✨ نسخة محسّنة — بترجع أعلى نقطة قريبة من Maria
+function getGroundY(x, z) {
+  // ✨ نستخدم 3 أشعة — واحد في المنتصف + اتنين حوالين Maria
+  // عشان نصطاد الدرجة الصح حتى لو Maria على حافة الدرجة
+  
+  const offsets = [
+    [0, 0],           // المنتصف
+    [0.3, 0],         // يمين
+    [-0.3, 0],        // يسار
+    [0, 0.3],         // أمام
+    [0, -0.3],        // خلف
+  ];
+  
+  let highestValidY = 0.3;
+  const currentY = player.position.y;
+  
+  for (const [ox, oz] of offsets) {
+    groundRayOrigin.set(x + ox, 10, z + oz);
+    groundRaycaster.set(groundRayOrigin, groundRayDirection);
+    
+    const hits = groundRaycaster.intersectObjects(walkableMeshes, false);
+    if (hits.length === 0) continue;
+    
+    // رتّب من الأعلى للأقل
+    hits.sort((a, b) => b.point.y - a.point.y);
+    
+    // دوّر على أفضل surface
+    for (const hit of hits) {
+      const diff = hit.point.y - currentY;
+      
+      // ✨ نقبل السطح لو:
+      // 1) أقل من Maria بـ2 وحدة (تحتها — نازل)
+      // 2) أو أعلى منها بـstepHeight أو أقل (صاعد)
+      if (diff <= 0.1 || diff <= player.stepHeight) {
+        if (hit.point.y > highestValidY) {
+          highestValidY = hit.point.y;
+        }
+        break;
+      }
+    }
+  }
+  
+  return highestValidY;
+}
+
+// ============================================
+// WALL COLLISION
+// ============================================
+const wallRaycaster = new THREE.Raycaster();
+const wallDirections = [
+  new THREE.Vector3(1, 0, 0),
+  new THREE.Vector3(-1, 0, 0),
+  new THREE.Vector3(0, 0, 1),
+  new THREE.Vector3(0, 0, -1),
+];
+
+function checkWallCollision(x, z) {
+  for (const dir of wallDirections) {
+    wallRaycaster.set(
+      new THREE.Vector3(x, player.position.y + 0.8, z),
+      dir
+    );
+    
+    const hits = wallRaycaster.intersectObjects(walkableMeshes, false);
+    
+    if (hits.length > 0 && hits[0].distance < 0.6) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+
 function updatePlayer(delta) {
   if (!player.object) return;
 
@@ -1227,15 +1713,76 @@ function updatePlayer(delta) {
 
   const accelRate = targetSpeed !== 0 ? 8 : 12;
   player.currentSpeed += (targetSpeed - player.currentSpeed) * dampFactor(accelRate, delta);
-
-  // 3) تحديث الموقع
+  // 3) تحديث الموقع الأفقي + Collision
   if (Math.abs(player.currentSpeed) > 0.05) {
     const dx = Math.sin(player.rotation) * player.currentSpeed * delta;
     const dz = Math.cos(player.rotation) * player.currentSpeed * delta;
-    player.position.x = clamp(player.position.x + dx, -50, 50);
-    player.position.z = clamp(player.position.z + dz, -50, 50);
+    
+    // ✨ نتأكد من الـcollision في الاتجاه الجديد
+    const newX = clamp(player.position.x + dx, -50, 50);
+    const newZ = clamp(player.position.z + dz, -50, 50);
+    
+    // ✨ نتحقق لو في جدار قدامنا
+    if (!checkWallCollision(newX, newZ)) {
+      player.position.x = newX;
+      player.position.z = newZ;
+    } else {
+      // ✨ في جدار — نوقف الحركة
+      player.currentSpeed *= 0.1;
+    }
   } else {
     player.currentSpeed = 0;
+  }
+  // ✨ 3.b) كشف الأرض + الجاذبية + Step Height
+  const groundY = getGroundY(player.position.x, player.position.z);
+
+  // القفز
+  if (keys["Space"] && player.isGrounded) {
+    player.velocityY = player.jumpForce;
+    player.isGrounded = false;
+    keys["Space"] = false;
+  }
+  // ✨ نحدد الـtargetY
+  player.targetY = groundY;
+
+  // لو Maria تحت الهدف (لازم تطلع — سلم أو منصة)
+  if (player.position.y < player.targetY - 0.02) {
+    const diff = player.targetY - player.position.y;
+    
+    // ✨ نصعد بنعومة لأي فرق
+    if (diff <= player.stepHeight) {
+      player.position.y += diff * Math.min(player.yLerpSpeed * delta, 1);
+      player.velocityY = 0;
+      player.isGrounded = true;
+    } else {
+      // فرق كبير — امنع الحركة بس
+      player.currentSpeed *= 0.5;
+    }
+  } 
+  // لو Maria فوق الهدف (لازم تنزل — جاذبية)
+  else if (player.position.y > player.targetY + 0.02) {
+    player.velocityY += player.gravity * delta;
+    player.position.y += player.velocityY * delta;
+    
+    if (player.position.y <= player.targetY) {
+      player.position.y = player.targetY;
+      player.velocityY = 0;
+      player.isGrounded = true;
+    } else {
+      player.isGrounded = false;
+    }
+  } 
+  // في النطاق (على نفس المستوى)
+  else {
+    player.position.y = player.targetY;
+    player.velocityY = 0;
+    player.isGrounded = true;
+  } 
+
+  // ✨ حماية إضافية — لو فوق الأرض بكتير (مثلاً في نص الجو)
+  if (player.position.y < 0.3) {
+    player.position.y = 0.3;
+    player.velocityY = 0;
   }
 
   // 4) تحديث الـCharacter
@@ -1278,6 +1825,18 @@ function animateOrbs(time) {
     orb.rotation.y += 0.01;
   });
 }
+
+
+function updatePlatforms(time) {
+  // نبض خفيف على المنصات
+  platforms.list.forEach((platform, i) => {
+    const light = platform.children.find(c => c.isPointLight);
+    if (light) {
+      light.intensity = 2 + Math.sin(time * 1.5 + i) * 0.5;
+    }
+  });
+}
+
 
 
 function updateCentralPath(time) {
@@ -1342,7 +1901,8 @@ function animate() {
   updatePlayer(delta);
   animateOrbs(time);
   updateAICore(time, delta);
-  updateCentralPath(time);  // ← ✨ جديد
+  updateCentralPath(time);
+  updatePlatforms(time);  // ← ✨ جديد
 
   if (player.mixer) player.mixer.update(delta);
 
