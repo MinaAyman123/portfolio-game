@@ -19,7 +19,7 @@ const COLORS = {
 };
 
 // ============================================
-// [1] ثوابت الحركة والكاميرا الجديدة
+// ثوابت الحركة والكاميرا
 // ============================================
 const CAMERA_DISTANCE     = 8;
 const CAMERA_PIVOT_HEIGHT = 1.7;
@@ -259,9 +259,6 @@ const centralPath = {
 function createCentralPath() {
   const group = new THREE.Group();
 
-  // ============================================
-  // 1) أرضية الممر (مرتفعة شوي — زي منصة)
-  // ============================================
   const pathLength = 24;
   const pathWidth = 7;
 
@@ -286,9 +283,6 @@ function createCentralPath() {
     centralPath.floorSegments.push(seg);
   }
 
-  // ============================================
-  // 2) خطوط نيون على الجانبين (بنفسجي + سماوي)
-  // ============================================
   const neonLeftMat = new THREE.MeshBasicMaterial({
     color: 0x8B5CF6,
     transparent: true,
@@ -316,9 +310,6 @@ function createCentralPath() {
   group.add(rightLine);
   centralPath.neonLines.push({ mesh: rightLine, baseColor: 0x06B6D4 });
 
-  // ============================================
-  // 3) خطوط عرضية
-  // ============================================
   for (let i = 0; i < 6; i++) {
     const line = new THREE.Mesh(
       new THREE.BoxGeometry(pathWidth - 1, 0.05, 0.12),
@@ -337,9 +328,6 @@ function createCentralPath() {
     centralPath.neonLines.push({ mesh: line, baseColor: 0x06B6D4, isHorizontal: true });
   }
 
-  // ============================================
-  // 4) أعمدة صغيرة على الجانبين
-  // ============================================
   const pillarCount = 6;
   for (let i = 0; i < pillarCount; i++) {
     const z = 14 - (i + 0.5) * (pathLength / pillarCount);
@@ -388,9 +376,6 @@ function createCentralPath() {
     group.add(topOrb2);
   }
 
-  // ============================================
-  // 5) إضاءة جانبية
-  // ============================================
   for (let i = 0; i < 4; i++) {
     const z = 14 - (i + 0.5) * (pathLength / 4);
 
@@ -403,9 +388,6 @@ function createCentralPath() {
     group.add(rightLight);
   }
 
-  // ============================================
-  // 6) أشعة نور نازلة
-  // ============================================
   for (let i = 0; i < 3; i++) {
     const z = 12 - i * 6;
     const beam = new THREE.Mesh(
@@ -432,7 +414,7 @@ createCentralPath();
 const walkableMeshes = [];
 
 // ============================================
-// [2] Path Collider — أرضية الممر المخفية
+// Path Collider
 // ============================================
 {
   const pathCollider = new THREE.Mesh(
@@ -445,6 +427,251 @@ const walkableMeshes = [];
 }
 
 // ============================================
+// [1] LIVE SCREENS — شاشات بتعرض بيانات حقيقية
+// ============================================
+const liveScreens = [];
+const screenData = { projects: null, skills: null, loaded: false };
+
+const hex = (c) => "#" + c.toString(16).padStart(6, "0");
+const SCREEN_FONT = "Orbitron, Arial, sans-serif";
+
+function fitFont(ctx, text, maxW, startPx, minPx, weight = "bold") {
+  let px = startPx;
+  while (px > minPx) {
+    ctx.font = `${weight} ${px}px ${SCREEN_FONT}`;
+    if (ctx.measureText(text).width <= maxW) break;
+    px -= 2;
+  }
+  ctx.font = `${weight} ${px}px ${SCREEN_FONT}`;
+  return px;
+}
+
+function drawFrame(ctx, w, h, color, title) {
+  ctx.fillStyle = "#070712";
+  ctx.fillRect(0, 0, w, h);
+
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, hex(color) + "22");
+  g.addColorStop(1, "#00000000");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = hex(color);
+  ctx.lineWidth = 6;
+  ctx.strokeRect(12, 12, w - 24, h - 24);
+
+  ctx.fillStyle = hex(color);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  fitFont(ctx, title, w - 80, 46, 22);
+  ctx.fillText(title, 40, 38);
+  ctx.fillRect(40, 100, w - 80, 3);
+}
+
+function drawHint(ctx, w, h, color, text = "PRESS  E") {
+  ctx.font = `bold 24px ${SCREEN_FONT}`;
+  ctx.fillStyle = hex(color);
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(text, w - 40, h - 28);
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH, maxLines) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  let lines = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? line + " " + word : word;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  if (lines.length > maxLines) {
+    lines = lines.slice(0, maxLines);
+    lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, "") + "…";
+  }
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineH));
+  return y + lines.length * lineH;
+}
+
+// ---------- الرسّامين ----------
+const makeProjectRenderer = (i, color) => (ctx, w, h) => {
+  const p = screenData.projects && screenData.projects[i];
+  drawFrame(ctx, w, h, color, p ? String(p.name).toUpperCase() : `PROJECT ${i + 1}`);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "30px Arial, sans-serif";
+
+  if (!screenData.loaded) { ctx.fillText("Loading...", 40, 130); return; }
+  if (!p) {
+    ctx.fillText("Press E to see all projects", 40, 130);
+    drawHint(ctx, w, h, color);
+    return;
+  }
+
+  wrapText(ctx, p.description || "", 40, 128, w - 80, 40, 5);
+
+  let tx = 40;
+  const ty = h - 120;
+  ctx.font = "bold 24px Arial, sans-serif";
+  ctx.textBaseline = "middle";
+  for (const t of (p.tech || []).slice(0, 4)) {
+    const tw = ctx.measureText(t).width + 32;
+    if (tx + tw > w - 40) break;
+    ctx.fillStyle = hex(color) + "33";
+    ctx.fillRect(tx, ty, tw, 40);
+    ctx.strokeStyle = hex(color);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(tx, ty, tw, 40);
+    ctx.fillStyle = hex(color);
+    ctx.textAlign = "left";
+    ctx.fillText(t, tx + 16, ty + 21);
+    tx += tw + 12;
+  }
+  drawHint(ctx, w, h, color);
+};
+
+function renderSkillsBoard(ctx, w, h) {
+  const color = 0x8B5CF6;
+  drawFrame(ctx, w, h, color, "SKILLS");
+
+  const list = (screenData.skills || [])
+    .slice()
+    .sort((a, b) => b.level - a.level)
+    .slice(0, 5);
+
+  if (!list.length) {
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "30px Arial, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(screenData.loaded ? "Press E to view skills" : "Loading...", 40, 130);
+    return;
+  }
+
+  const top = 122;
+  const rowH = (h - top - 30) / list.length;
+  list.forEach((s, i) => {
+    const y = top + i * rowH;
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#F5F5F7";
+    ctx.font = "bold 26px Arial, sans-serif";
+    ctx.fillText(s.name, 40, y);
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = hex(color);
+    ctx.fillText(`${s.level}%`, w - 40, y);
+
+    ctx.fillStyle = "#1A1A25";
+    ctx.fillRect(40, y + 34, w - 80, 12);
+    const g = ctx.createLinearGradient(40, 0, w - 40, 0);
+    g.addColorStop(0, "#8B5CF6");
+    g.addColorStop(1, "#06B6D4");
+    ctx.fillStyle = g;
+    ctx.fillRect(40, y + 34, (w - 80) * clamp(s.level, 0, 100) / 100, 12);
+  });
+}
+
+const makeLinkRenderer = (title, big, small, color) => (ctx, w, h) => {
+  drawFrame(ctx, w, h, color, title);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#F5F5F7";
+  fitFont(ctx, big, w - 80, 56, 24);
+  ctx.fillText(big, 40, h * 0.34);
+
+  ctx.fillStyle = "#cbd5e1";
+  fitFont(ctx, small, w - 80, 30, 16, "normal");
+  ctx.fillText(small, 40, h * 0.34 + 80);
+  drawHint(ctx, w, h, color);
+};
+
+function renderAboutScreen(ctx, w, h) {
+  const color = 0x06B6D4;
+  drawFrame(ctx, w, h, color, "MINA AYMAN SEIF");
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  ctx.fillStyle = "#F5F5F7";
+  ctx.font = "bold 40px Arial, sans-serif";
+  ctx.fillText("AI Engineer", 40, 130);
+
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "32px Arial, sans-serif";
+  ["Deep Learning & Neural Networks", "Computer Vision", "Backend APIs with FastAPI"].forEach((t, i) => {
+    ctx.fillStyle = hex(color);
+    ctx.fillText("▸", 40, 210 + i * 56);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText(t, 84, 210 + i * 56);
+  });
+  drawHint(ctx, w, h, color);
+}
+
+// ---------- منشئ الشاشة ----------
+function createInfoScreen({ parent, x, y, z, width, height, color, id, label, opens, render }) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = Math.round(1024 * (height / width));
+  const ctx = canvas.getContext("2d");
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
+  );
+  mesh.position.set(x, y, z);
+  parent.add(mesh);
+
+  const screen = {
+    id, label, opens, color, mesh, canvas, ctx, texture, render,
+    position: new THREE.Vector3(),
+    interactDistance: 5,
+    redraw() {
+      render(ctx, canvas.width, canvas.height);
+      texture.needsUpdate = true;
+    },
+  };
+  screen.redraw();
+  liveScreens.push(screen);
+  return screen;
+}
+
+function buildScreenTargets() {
+  scene.updateMatrixWorld(true);
+  liveScreens.forEach((s) => s.mesh.getWorldPosition(s.position));
+}
+
+async function loadScreenData() {
+  const get = (path) =>
+    fetch(`${API_URL}${path}`).then((r) => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    });
+
+  const [pr, sk] = await Promise.allSettled([get("/api/projects"), get("/api/skills")]);
+  if (pr.status === "fulfilled" && Array.isArray(pr.value)) screenData.projects = pr.value;
+  if (sk.status === "fulfilled" && Array.isArray(sk.value)) screenData.skills = sk.value;
+  screenData.loaded = true;
+  liveScreens.forEach((s) => s.redraw());
+}
+
+// إعادة الرسم بعد تحميل الخط
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => liveScreens.forEach((s) => s.redraw()));
+}
+
+
+// ============================================
 // PLATFORMS
 // ============================================
 const platforms = {
@@ -454,7 +681,7 @@ const platforms = {
 };
 
 // ============================================
-// [3] createStairs الجديدة
+// createStairs
 // ============================================
 function createStairs({ endX, endZ, dirX, dirZ, steps, topY, depth = 0.8, width = 3 }) {
   const group = new THREE.Group();
@@ -598,9 +825,6 @@ function createPlatform(x, y, z, width, depth, color, hasRailing = true) {
   light.position.set(0, 2, 0);
   group.add(light);
 
-  // ============================================
-  // [4] سطح المنصة
-  // ============================================
   group.userData.topY = y + 0.2;
 
   scene.add(group);
@@ -609,12 +833,13 @@ function createPlatform(x, y, z, width, depth, color, hasRailing = true) {
 }
 
 // ============================================
-// [5] createLevelDesign مع السلالم الجديدة + إصلاح الجسر
+// createLevelDesign
 // ============================================
 function createLevelDesign() {
-  // منصة 1 — وسط (y=6) عشان تساوي ارتفاع المنصة 2
+  // منصة 1 — وسط (y=6)
   const p1 = createPlatform(18, 6, 0, 8, 8, 0x8B5CF6);
 
+  // [2] شاشتين المنصة 1
   for (let i = 0; i < 2; i++) {
     const frame = new THREE.Mesh(
       new THREE.BoxGeometry(2, 1.3, 0.15),
@@ -623,16 +848,17 @@ function createLevelDesign() {
     frame.position.set(-2 + i * 4, 2, -2);
     p1.add(frame);
 
-    const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.85, 1.15),
-      new THREE.MeshStandardMaterial({
-        color: 0x8B5CF6,
-        emissive: 0x8B5CF6,
-        emissiveIntensity: 0.8,
-      })
-    );
-    screen.position.set(-2 + i * 4, 2, -1.9);
-    p1.add(screen);
+    createInfoScreen({
+      parent: p1, x: -2 + i * 4, y: 2, z: -1.9,
+      width: 1.85, height: 1.15,
+      color: i === 0 ? 0x8B5CF6 : 0x3B82F6,
+      id: `p1-screen-${i}`,
+      label: i === 0 ? "GitHub" : "LinkedIn",
+      opens: "contact",
+      render: i === 0
+        ? makeLinkRenderer("GITHUB", "MinaAyman123", "github.com/MinaAyman123", 0x8B5CF6)
+        : makeLinkRenderer("LINKEDIN", "Mina Ayman", "linkedin.com/in/mina-aiman-0629a42b1", 0x3B82F6),
+    });
   }
 
   // منصة 2 — عالية (y=6) على الشمال
@@ -665,27 +891,25 @@ function createLevelDesign() {
   bigScreen.position.set(0, 2, -3);
   p2.add(bigScreen);
 
-  const bigScreenDisplay = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.8, 1.8),
-    new THREE.MeshStandardMaterial({
-      color: 0x06B6D4,
-      emissive: 0x06B6D4,
-      emissiveIntensity: 0.7,
-    })
-  );
-  bigScreenDisplay.position.set(0, 2, -2.9);
-  p2.add(bigScreenDisplay);
+  // [3] شاشة المنصة 2 — About
+  createInfoScreen({
+    parent: p2, x: 0, y: 2, z: -2.9,
+    width: 2.8, height: 1.8,
+    color: 0x06B6D4,
+    id: "p2-about",
+    label: "About",
+    opens: "about",
+    render: renderAboutScreen,
+  });
 
-  // ============================================
-  // [2] سلم المنصة 1: من الجنب الخارجي +x
-  // ============================================
+  // سلم المنصة 1: من الجنب الخارجي +x
   createStairs({ endX: 22, endZ: 0, dirX: -1, dirZ: 0, steps: 16, topY: p1.userData.topY, depth: 0.75, width: 3 });
 
   // سلم المنصة 2
   createStairs({ endX: -16, endZ: 4, dirX: 0, dirZ: -1, steps: 16, topY: p2.userData.topY, depth: 0.75, width: 3 });
 
   // ============================================
-  // [3] الجسر الجديد على شكل U
+  // الجسر على شكل U
   // ============================================
   const BRIDGE_Z = -6.5;
   const BRIDGE_W = 2.5;
@@ -711,7 +935,6 @@ function createLevelDesign() {
     scene.add(piece);
     walkableMeshes.push(piece);
 
-    // خطين نيون على جانبي القطعة
     const lineY = BRIDGE_Y + BRIDGE_T / 2 + 0.03;
     const lineMat = new THREE.MeshBasicMaterial({ color: 0x8B5CF6 });
     if (w >= d) {
@@ -733,14 +956,11 @@ function createLevelDesign() {
   const zMin = BRIDGE_Z - half;
   const zMax = BRIDGE_Z + half;
 
-  // الجزء الرئيسي بين المنصتين
   addBridgePiece(-16 - half, 18 + half, zMin, zMax);
-  // وصلة المنصة 2 (يسار)
   addBridgePiece(-16 - half, -16 + half, zMin, -4);
-  // وصلة المنصة 1 (يمين)
   addBridgePiece(18 - half, 18 + half, zMin, -4);
 
-  // منصة صغيرة ثالثة (y=3) على الشمال بعيد
+  // منصة صغيرة ثالثة (y=3)
   const p3 = createPlatform(-22, 3, 8, 5, 5, 0xEC4899);
 
   for (let i = 0; i < 3; i++) {
@@ -1273,6 +1493,8 @@ function createProjectsRoom() {
   const group = new THREE.Group();
   group.position.set(15, 0, -15);
 
+  // [4] 3 شاشات المشاريع
+  const projColors = [0x06B6D4, 0x3B82F6, 0x8B5CF6];
   for (let i = 0; i < 3; i++) {
     const screenFrame = new THREE.Mesh(
       new THREE.BoxGeometry(2.5, 1.6, 0.15),
@@ -1282,16 +1504,15 @@ function createProjectsRoom() {
     screenFrame.castShadow = true;
     group.add(screenFrame);
 
-    const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.3, 1.4),
-      new THREE.MeshStandardMaterial({
-        color: 0x06B6D4,
-        emissive: 0x06B6D4,
-        emissiveIntensity: 0.7,
-      })
-    );
-    screen.position.set(-3 + i * 3, 3.5, 0.1);
-    group.add(screen);
+    createInfoScreen({
+      parent: group, x: -3 + i * 3, y: 3.5, z: 0.1,
+      width: 2.3, height: 1.4,
+      color: projColors[i],
+      id: `projects-screen-${i}`,
+      label: "Projects",
+      opens: "projects",
+      render: makeProjectRenderer(i, projColors[i]),
+    });
 
     const backLight = new THREE.PointLight(0x06B6D4, 1.5, 6);
     backLight.position.set(-3 + i * 3, 3.5, 1);
@@ -1331,18 +1552,16 @@ function createSkillsRoom() {
   board.castShadow = true;
   group.add(board);
 
-  const boardScreen = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.7, 2.2),
-    new THREE.MeshStandardMaterial({
-      color: 0x8B5CF6,
-      emissive: 0x8B5CF6,
-      emissiveIntensity: 0.35,
-      transparent: true,
-      opacity: 0.75,
-    })
-  );
-  boardScreen.position.set(0, 2.2, -0.48);
-  group.add(boardScreen);
+  // [5] شاشة المهارات
+  createInfoScreen({
+    parent: group, x: 0, y: 2.2, z: -0.48,
+    width: 4.7, height: 2.2,
+    color: 0x8B5CF6,
+    id: "skills-board",
+    label: "Skills",
+    opens: "skills",
+    render: renderSkillsBoard,
+  });
 
   const barColors = [0x8B5CF6, 0x3B82F6, 0x06B6D4, 0x8B5CF6, 0x3B82F6];
   const barHeights = [1.2, 1.8, 2.6, 1.5, 2.2];
@@ -1489,7 +1708,7 @@ for (let i = 0; i < 50; i++) {
 }
 
 // ============================================
-// [6] PLAYER — الكائن الجديد
+// PLAYER
 // ============================================
 const loader = new FBXLoader();
 const player = {
@@ -1593,7 +1812,7 @@ function playAction(name, fade = 0.25) {
 }
 
 // ============================================
-// [7] INPUT — cameraYaw بدل cameraAngle
+// INPUT
 // ============================================
 const keys = {};
 window.gameKeys = keys;
@@ -1617,7 +1836,6 @@ window.addEventListener("keydown", (e) => {
   
   keys[e.code] = true;
   
-  // ✨ القفز — jump buffer بدل القفز المباشر
   if (e.code === "Space" && !e.repeat) player.jumpBuffer = JUMP_BUFFER_TIME;
   
   if (e.code === "KeyE") tryInteract();
@@ -1680,71 +1898,50 @@ document.addEventListener("mousemove", (e) => {
 const interactHint = document.getElementById("interactHint");
 let currentTarget = null;
 
+// [6] checkNearbyTarget بالنسخة الجديدة
 function checkNearbyTarget() {
-  let nearestDoor = null;
-  let nearestDoorDist = Infinity;
-  let nearestStation = null;
-  let nearestStationDist = Infinity;
+  const pp = player.position;
+  let best = null;
+  let bestDist = Infinity;
 
-  doors.forEach(door => {
-    const dist = player.position.distanceTo(door.position);
-    if (dist < door.interactDistance && dist < nearestDoorDist) {
-      nearestDoorDist = dist;
-      nearestDoor = door;
+  const consider = (type, key, panelId, name, dist) => {
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { type, key, id: panelId, name };
     }
+  };
+
+  doors.forEach((d) => {
+    const dist = pp.distanceTo(d.position);
+    if (dist < d.interactDistance) consider("door", d.id, d.id, d.id.toUpperCase(), dist);
   });
 
-  stations.forEach(station => {
-    const dist = player.position.distanceTo(station.position);
-    if (dist < station.interactDistance && dist < nearestStationDist) {
-      nearestStationDist = dist;
-      nearestStation = station;
-    }
+  stations.forEach((s) => {
+    const dist = pp.distanceTo(s.position);
+    if (dist < s.interactDistance) consider("station", s.id, s.id, s.name, dist);
   });
 
-  let nearest = null;
-  let type = null;
+  liveScreens.forEach((s) => {
+    const dist = Math.hypot(pp.x - s.position.x, pp.z - s.position.z);
+    const sameLevel = Math.abs(pp.y + 1 - s.position.y) < 4;
+    if (dist < s.interactDistance && sameLevel) consider("screen", s.id, s.opens, s.label, dist);
+  });
 
-  if (nearestDoor && nearestStation) {
-    if (nearestDoorDist < nearestStationDist) {
-      nearest = nearestDoor;
-      type = "door";
-    } else {
-      nearest = nearestStation;
-      type = "station";
-    }
-  } else if (nearestDoor) {
-    nearest = nearestDoor;
-    type = "door";
-  } else if (nearestStation) {
-    nearest = nearestStation;
-    type = "station";
-  }
+  const currentKey = best ? `${best.type}-${best.key}` : null;
+  const prevKey = currentTarget ? `${currentTarget.type}-${currentTarget.key}` : null;
+  if (currentKey === prevKey) return;
 
-  const currentKey = nearest ? `${type}-${nearest.id}` : null;
-  const prevKey = currentTarget ? `${currentTarget.type}-${currentTarget.id}` : null;
-
-  if (currentKey !== prevKey) {
-    const statusText = document.getElementById("statusText");
-    
-    if (nearest) {
-      currentTarget = {
-        type,
-        id: nearest.id,
-        name: nearest.name || nearest.id,
-      };
-      interactHint.classList.remove("hidden");
-      const prefix = type === "station" ? "Use" : "Enter";
-      const displayName = type === "station" ? nearest.name : nearest.id.toUpperCase();
-      interactHint.innerHTML = `Press <kbd>E</kbd> to ${prefix} <strong style="color:#06B6D4">${displayName}</strong>`;
-      
-      if (statusText) statusText.textContent = `Near: ${displayName}`;
-    } else {
-      currentTarget = null;
-      interactHint.classList.add("hidden");
-      
-      if (statusText) statusText.textContent = "Exploring";
-    }
+  const statusText = document.getElementById("statusText");
+  if (best) {
+    currentTarget = best;
+    const prefix = best.type === "door" ? "Enter" : best.type === "screen" ? "View" : "Use";
+    interactHint.classList.remove("hidden");
+    interactHint.innerHTML = `Press <kbd>E</kbd> to ${prefix} <strong style="color:#06B6D4">${best.name}</strong>`;
+    if (statusText) statusText.textContent = `Near: ${best.name}`;
+  } else {
+    currentTarget = null;
+    interactHint.classList.add("hidden");
+    if (statusText) statusText.textContent = "Exploring";
   }
 }
 
@@ -1864,10 +2061,8 @@ function chooseAnimation(absSpeed) {
 }
 
 // ============================================
-// [8] Colliders + updatePlayer الجديد
+// Colliders + updatePlayer
 // ============================================
-
-// ---------- Colliders (صناديق AABB بدل الـRaycast) ----------
 const colliders = [];
 
 function buildColliders() {
@@ -1929,11 +2124,9 @@ function updatePlayer(delta) {
   const p = player.position;
   const v = player.velocity;
 
-  // كاميرا بالأسهم
   if (keys["ArrowLeft"])  cameraYaw += 1.8 * delta;
   if (keys["ArrowRight"]) cameraYaw -= 1.8 * delta;
 
-  // 1) الإدخال — نسبةً لاتجاه الكاميرا
   let ix = (keys["KeyD"] ? 1 : 0) - (keys["KeyA"] ? 1 : 0);
   let iz = (keys["KeyW"] ? 1 : 0) - (keys["KeyS"] ? 1 : 0);
   const inputLen = Math.hypot(ix, iz);
@@ -1944,7 +2137,6 @@ function updatePlayer(delta) {
   const dirX = fx * iz - fz * ix;
   const dirZ = fz * iz + fx * ix;
 
-  // 2) السرعة الأفقية — تسارع وفرملة تدريجيين
   const running = keys["ShiftLeft"] || keys["ShiftRight"];
   const topSpeed = running ? RUN_SPEED : WALK_SPEED;
 
@@ -1959,16 +2151,13 @@ function updatePlayer(delta) {
   if (hSpeed < 0.05 && !hasInput) { v.x = 0; v.z = 0; }
   player.hSpeed = hSpeed;
 
-  // 3) الشخصية تلف ناحية اتجاه الحركة بنعومة
   if (hasInput) {
     const targetRot = Math.atan2(dirX, dirZ);
     player.rotation += wrapAngle(targetRot - player.rotation) * dampFactor(TURN_SPEED, delta);
   }
 
-  // 4) الحركة الأفقية + الاصطدام
   moveHorizontal(v.x * delta, v.z * delta);
 
-  // 5) القفز (coyote time + jump buffer)
   player.jumpBuffer = Math.max(0, player.jumpBuffer - delta);
   player.coyoteTimer = player.isGrounded ? COYOTE_TIME : Math.max(0, player.coyoteTimer - delta);
 
@@ -1979,7 +2168,6 @@ function updatePlayer(delta) {
     player.jumpBuffer = 0;
   }
 
-  // 6) الأرض + السلالم + الجاذبية
   const ground = getGroundHeight(p.x, p.z, p.y);
 
   if (player.isGrounded) {
@@ -2000,14 +2188,11 @@ function updatePlayer(delta) {
     }
   }
 
-  // الارتفاع المعروض بيتنعّم
   player.smoothY += (p.y - player.smoothY) * dampFactor(player.isGrounded ? 18 : 40, delta);
 
-  // 7) تحديث الشخصية
   player.object.position.set(p.x, player.smoothY, p.z);
   player.object.rotation.y = player.rotation;
 
-  // 8) الأنيميشن
   if (player.isGrounded) playAction(chooseAnimation(hSpeed));
 
   if (player.currentAction === "walk" && player.actions.walk) {
@@ -2016,7 +2201,6 @@ function updatePlayer(delta) {
     player.actions.run.timeScale = clamp(hSpeed / RUN_SPEED, 0.7, 1.3);
   }
 
-  // 9) الكاميرا: pivot ناعم + دوران فوري مع الماوس
   _pivotTarget.set(p.x, player.smoothY + CAMERA_PIVOT_HEIGHT, p.z);
   cameraPivot.x += (_pivotTarget.x - cameraPivot.x) * dampFactor(14, delta);
   cameraPivot.z += (_pivotTarget.z - cameraPivot.z) * dampFactor(14, delta);
@@ -2030,7 +2214,6 @@ function updatePlayer(delta) {
   );
   camera.lookAt(cameraPivot);
 
-  // إحساس بالسرعة: FOV يوسّع شوية وقت الجري
   const targetFov = 60 + clamp((hSpeed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0, 1) * 7;
   if (Math.abs(camera.fov - targetFov) > 0.01) {
     camera.fov += (targetFov - camera.fov) * dampFactor(4, delta);
@@ -2176,10 +2359,12 @@ async function init() {
     setProgress(60);
     await loadAnimations();
 
-    // ============================================
-    // [9] buildColliders + تهيئة player و cameraPivot
-    // ============================================
     buildColliders();
+
+    // [7] buildScreenTargets + loadScreenData
+    buildScreenTargets();
+    loadScreenData();  // من غير await — الشاشات بتتحدّث لما البيانات توصل
+
     player.position.set(0, 0.3, 12);
     player.smoothY = 0.3;
     player.rotation = Math.PI;
