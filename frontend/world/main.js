@@ -609,11 +609,11 @@ function createPlatform(x, y, z, width, depth, color, hasRailing = true) {
 }
 
 // ============================================
-// [5] createLevelDesign مع السلالم الجديدة
+// [5] createLevelDesign مع السلالم الجديدة + إصلاح الجسر
 // ============================================
 function createLevelDesign() {
-  // منصة 1 — وسط (y=3) على اليمين
-  const p1 = createPlatform(18, 3, 0, 8, 8, 0x8B5CF6);
+  // منصة 1 — وسط (y=6) عشان تساوي ارتفاع المنصة 2
+  const p1 = createPlatform(18, 6, 0, 8, 8, 0x8B5CF6);
 
   for (let i = 0; i < 2; i++) {
     const frame = new THREE.Mesh(
@@ -677,12 +677,21 @@ function createLevelDesign() {
   p2.add(bigScreenDisplay);
 
   // ============================================
-  // [5] السلالم الجديدة — من الجنب بره المنصة
+  // [2] سلم المنصة 1: من الجنب الخارجي +x
   // ============================================
-  createStairs({ endX: 18,  endZ: 4, dirX: 0, dirZ: -1, steps: 8,  topY: p1.userData.topY, depth: 0.8,  width: 3 });
+  createStairs({ endX: 22, endZ: 0, dirX: -1, dirZ: 0, steps: 16, topY: p1.userData.topY, depth: 0.75, width: 3 });
+
+  // سلم المنصة 2
   createStairs({ endX: -16, endZ: 4, dirX: 0, dirZ: -1, steps: 16, topY: p2.userData.topY, depth: 0.75, width: 3 });
 
-  // جسر يربط المنصتين
+  // ============================================
+  // [3] الجسر الجديد على شكل U
+  // ============================================
+  const BRIDGE_Z = -6.5;
+  const BRIDGE_W = 2.5;
+  const BRIDGE_T = 0.3;
+  const BRIDGE_Y = p2.userData.topY - BRIDGE_T / 2;
+
   const bridgeMat = new THREE.MeshStandardMaterial({
     color: 0x1A1A25,
     roughness: 0.4,
@@ -691,26 +700,45 @@ function createLevelDesign() {
     emissiveIntensity: 0.15,
   });
 
-  const bridge = new THREE.Mesh(
-    new THREE.BoxGeometry(28, 0.3, 2.5),
-    bridgeMat
-  );
-  bridge.position.set(0, 6, -4);
-  bridge.receiveShadow = true;
-  bridge.castShadow = true;
-  scene.add(bridge);
-  walkableMeshes.push(bridge);
+  function addBridgePiece(minX, maxX, minZ, maxZ) {
+    const w = maxX - minX;
+    const d = maxZ - minZ;
 
-  const bridgeLine1 = new THREE.Mesh(
-    new THREE.BoxGeometry(28, 0.05, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0x8B5CF6 })
-  );
-  bridgeLine1.position.set(0, 6.18, -4 + 1.2);
-  scene.add(bridgeLine1);
+    const piece = new THREE.Mesh(new THREE.BoxGeometry(w, BRIDGE_T, d), bridgeMat);
+    piece.position.set((minX + maxX) / 2, BRIDGE_Y, (minZ + maxZ) / 2);
+    piece.castShadow = true;
+    piece.receiveShadow = true;
+    scene.add(piece);
+    walkableMeshes.push(piece);
 
-  const bridgeLine2 = bridgeLine1.clone();
-  bridgeLine2.position.z = -4 - 1.2;
-  scene.add(bridgeLine2);
+    // خطين نيون على جانبي القطعة
+    const lineY = BRIDGE_Y + BRIDGE_T / 2 + 0.03;
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0x8B5CF6 });
+    if (w >= d) {
+      [minZ + 0.06, maxZ - 0.06].forEach((z) => {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.1), lineMat);
+        l.position.set((minX + maxX) / 2, lineY, z);
+        scene.add(l);
+      });
+    } else {
+      [minX + 0.06, maxX - 0.06].forEach((x) => {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, d), lineMat);
+        l.position.set(x, lineY, (minZ + maxZ) / 2);
+        scene.add(l);
+      });
+    }
+  }
+
+  const half = BRIDGE_W / 2;
+  const zMin = BRIDGE_Z - half;
+  const zMax = BRIDGE_Z + half;
+
+  // الجزء الرئيسي بين المنصتين
+  addBridgePiece(-16 - half, 18 + half, zMin, zMax);
+  // وصلة المنصة 2 (يسار)
+  addBridgePiece(-16 - half, -16 + half, zMin, -4);
+  // وصلة المنصة 1 (يمين)
+  addBridgePiece(18 - half, 18 + half, zMin, -4);
 
   // منصة صغيرة ثالثة (y=3) على الشمال بعيد
   const p3 = createPlatform(-22, 3, 8, 5, 5, 0xEC4899);
